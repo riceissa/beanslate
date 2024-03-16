@@ -27,14 +27,20 @@ SIGN_MAP = {
         "repayment to them": "+",
     },
     "Equity": {
+        "increase": "-",
+        "decrease": "+",
         "opening balance": "-",
     },
     "Income": {
+        "increase": "-",
+        "decrease": "+",
         "owed to me": "-",
         "earned": "-",
         "income": "-",
     },
     "Expenses": {
+        "increase": "+",
+        "decrease": "-",
         "spent": "+",
         "expense": "+",
         "rebate": "-",
@@ -42,19 +48,24 @@ SIGN_MAP = {
 }
 
 def figure_out_debit_credit(sign):
-    return "Debit" if sign == "+" else "Credit"
+    if sign == "+":
+        return "Debit"
+    if sign == "-":
+        return "Credit"
+    raise ValueError("The sign must be + or -")
 
 def figure_out_increase_decrease(account_type, sign):
     if account_type == "Assets":
-        return "Increase" if sign == "+" else "Decrease"
+        return "Increase" if figure_out_debit_credit(sign) == "Debit" else "Decrease"
     if account_type == "Liabilities":
-        return "Increase" if sign == "-" else "Decrease"
+        return "Decrease" if figure_out_debit_credit(sign) == "Debit" else "Increase"
     if account_type == "Equity":
-        return "Increase" if sign == "-" else "Decrease"
+        return "Decrease" if figure_out_debit_credit(sign) == "Debit" else "Increase"
     if account_type == "Income":
-        return "Increase" if sign == "-" else "Decrease"
+        return "Decrease" if figure_out_debit_credit(sign) == "Debit" else "Increase"
     if account_type == "Expenses":
-        return "Increase" if sign == "+" else "Decrease"
+        return "Increase" if figure_out_debit_credit(sign) == "Debit" else "Decrease"
+    raise ValueError("Unknown account type!")
 
 def figure_out_sign(account_type, transaction_keyword):
     try:
