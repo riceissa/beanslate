@@ -72,10 +72,10 @@ for line in sys.stdin:
         assert sign in ["+", "-"]
         debit_or_credit = figure_out_debit_credit(sign)
         if sign == "-":
-            print(re.sub(r"(\d+\.\d+)", fr"-\1  ; {debit_or_credit}: ", line),
+            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr"-\1\2\3  ; {debit_or_credit}: ", line),
                   end="")
         else:
-            print(re.sub(r"(\d+\.\d+)", fr"\1  ; {debit_or_credit}: ", line),
+            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr" \1\2\3  ; {debit_or_credit}: ", line),
                   end="")
     else:
         print(line, end="")
