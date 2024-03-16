@@ -82,3 +82,56 @@ Beanslate will then translate the above into an input acceptable by Beancount:
 ```
 
 No more having to manually think about signed amounts or what Debit/Credit mean!
+
+Now let's say that you and your friend Bob often pay for each other's meals at
+restaurants (to simplify logistics) and later PayPal each other.  Should Bob be
+an Asset (accounts receivable) or a Liability (accounts payable)?  With
+Beanslate, it doesn't matter! Let me show you what I mean. Let's first treat
+the amount owed to Bob as a Liability:
+
+```
+2024-03-16 "Bob buys me lunch"
+  Liabilities:Bob   15.00 USD  owed to them
+  Expenses:Dining   15.00 USD  expense
+
+2024-03-16 "Pay Bob back for lunch"
+  Liabilities:Bob   15.00 USD  repayment to them
+  Assets:PayPal     15.00 USD  spend
+```
+
+This is translated to:
+
+```
+2024-03-16 "Bob buys me lunch"
+  Liabilities:Bob   -15.00 USD  ; Credit, Increase:   owed to them
+  Expenses:Dining    15.00 USD  ; Debit, Increase:   expense
+
+2024-03-16 "Pay Bob back for lunch"
+  Liabilities:Bob    15.00 USD  ; Debit, Decrease:   repayment to them
+  Assets:PayPal     -15.00 USD  ; Credit, Decrease:   spend
+```
+
+Now let's treat the amount Bob owes (in this case, a negative amount) as an
+asset:
+
+```
+2024-03-16 "Bob buys me lunch"
+  Assets:Bob        15.00 USD  owed to them
+  Expenses:Dining   15.00 USD  expense
+
+2024-03-16 "Pay Bob back for lunch"
+  Assets:Bob        15.00 USD  repayment to them
+  Assets:PayPal     15.00 USD  spend
+```
+
+This is translated to:
+
+```
+2024-03-16 "Bob buys me lunch"
+  Assets:Bob        -15.00 USD  ; Credit, Decrease:   owed to them
+  Expenses:Dining    15.00 USD  ; Debit, Increase:   expense
+
+2024-03-16 "Pay Bob back for lunch"
+  Assets:Bob         15.00 USD  ; Debit, Increase:   repayment to them
+  Assets:PayPal     -15.00 USD  ; Credit, Decrease:   spend
+```
