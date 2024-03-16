@@ -1,5 +1,8 @@
 # beanslate – translate intuitive input to Beancount syntax
 
+**WARNING:** This is just a proof of concept. It's implemented in a hacky way
+using regular expressions. Not ready for real-world use.
+
 Let's say you buy some food at the grocery store using your credit card, then
 you buy a book at the bookstore (also with your credit card), and then finally
 you pay off your credit card using your bank account. In conventional
@@ -77,3 +80,5 @@ Beanslate will then translate the above into an input acceptable by Beancount:
   Liabilities:CreditCard     21.45 USD  ; Debit, Decrease:   repayment to them
   Assets:BankAccount        -21.45 USD  ; Credit, Decrease:   decrease
 ```
+
+No more having to manually think about signed amounts or what Debit/Credit mean!
