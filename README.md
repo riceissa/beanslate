@@ -66,16 +66,16 @@ Beanslate will then translate the above into an input acceptable by Beancount:
 
 ```
 2024-03-15 "Buy some food"
-  Expenses:Groceries        12.50  ; Debit:  USD  expense
-  Liabilities:CreditCard    -12.50  ; Credit:  USD  charge
+  Expenses:Groceries         12.50 USD  ; Debit, Increase:   expense
+  Liabilities:CreditCard    -12.50 USD  ; Credit, Increase:   charge
 
 2024-03-15 "Buy a book"
-  Expenses:Entertainment     8.95  ; Debit:  USD  expense
-  Liabilities:CreditCard     -8.95  ; Credit:  USD  charge
+  Expenses:Entertainment      8.95 USD  ; Debit, Increase:   expense
+  Liabilities:CreditCard     -8.95 USD  ; Credit, Increase:   charge
 
 2024-03-15 "Pay off credit card"
-  Liabilities:CreditCard    21.45  ; Debit:  USD  repayment to them
-  Assets:BankAccount        -21.45  ; Credit:  USD  decrease
+  Liabilities:CreditCard     21.45 USD  ; Debit, Decrease:   repayment to them
+  Assets:BankAccount        -21.45 USD  ; Credit, Decrease:   decrease
 ```
 
 (there's currently a bug where the currency gets placed in a comment. this will
