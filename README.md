@@ -135,3 +135,10 @@ This is translated to:
   Assets:Bob         15.00 USD  ; Debit, Increase:   repayment to them
   Assets:PayPal     -15.00 USD  ; Credit, Decrease:   spend
 ```
+
+As you can see, in both cases, you just had to put "owed to them" and
+"repayment to them". You no longer have to go through mental contortions like
+"Money owed to Bob is a Liability, and an increase in Liabilities is a negative
+amount in Beancount, so I should use a negative number" or "Bob is an Asset in
+my accounting, and in this case I'm owing him money, so my Asset is going
+down – so that's a negative amount".
