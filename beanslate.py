@@ -23,6 +23,7 @@ def figure_out_sign(account_type, transaction_keyword):
                     "owed to me": "+",
                     "charge": "-",
                     "payment": "+",
+                    "repayment to them": "+",
                     }[transaction_keyword]
         if account_type == "Equity":
             return {
@@ -38,7 +39,8 @@ def figure_out_sign(account_type, transaction_keyword):
                     "rebate": "-",
                     }[transaction_keyword]
     except KeyError:
-        print(f"Can't use {transaction_keyword} for {account_type} accounts!", file=sys.stderr)
+        print(f"Can't use {transaction_keyword} for {account_type} accounts!",
+              file=sys.stderr)
         sys.exit()
 
 for line in sys.stdin:
@@ -48,23 +50,21 @@ for line in sys.stdin:
             "increase", "owed to me", "owed to them", "rebate", "earned",
             "received", "repaid to me", "repaid to them", "repayment to me",
             "repayment to them", "payment"]
-    # transaction_keywords_re = "|".join(transaction_keywords)
-    regex = rf"\s+({account_types_re}):"
-    m = re.match(regex, line)
+    m = re.match(rf"\s+({account_types_re}):", line)
     if m:
         account_type = m.group(1)
         line_ = line.split(";")[0].rstrip()
+        transaction_keyword = None
         for word in transaction_keywords:
-            if line_.endswith(word):
+            if line_.endswith(" " + word):
                 transaction_keyword = word
-        # transaction_keyword = m.group(2)
-        print(account_type, transaction_keyword)
+        if transaction_keyword is None:
+            print(f"Cannot find any transaction keyword on this line: {line}",
+                  file=sys.stderr, end="")
+            sys.exit()
         if figure_out_sign(account_type, transaction_keyword) == "-":
-            line_ = re.sub(r"(\d+\.\d+)", r"-\1  ;", line)
-            print(line_, end="")
+            print(re.sub(r"(\d+\.\d+)", r"-\1  ;", line), end="")
         else:
-            line_ = re.sub(r"(\d+\.\d+)", r"\1  ;", line)
-            print(line_, end="")
+            print(re.sub(r"(\d+\.\d+)", r"\1  ;", line), end="")
     else:
-        pass
-        # print(line, end="")
+        print(line, end="")
