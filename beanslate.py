@@ -3,6 +3,18 @@
 import re
 import sys
 
+def figure_out_debit_credit(account_type, sign):
+    if account_type == "Assets":
+        return "Debit" if sign == "+" else "Credit"
+    if account_type == "Liabilities":
+        return "Debit" if sign == "-" else "Credit"
+    if account_type == "Equity":
+        return "Debit" if sign == "-" else "Credit"
+    if account_type == "Income":
+        return "Debit" if sign == "-" else "Credit"
+    if account_type == "Expenses":
+        return "Debit" if sign == "+" else "Credit"
+
 def figure_out_sign(account_type, transaction_keyword):
     try:
         if account_type == "Assets":
@@ -64,9 +76,11 @@ for line in sys.stdin:
             print(f"Cannot find any transaction keyword on this line: {line}",
                   file=sys.stderr, end="")
             sys.exit()
-        if figure_out_sign(account_type, transaction_keyword) == "-":
-            print(re.sub(r"(\d+\.\d+)", r"-\1  ;", line), end="")
+        sign = figure_out_sign(account_type, transaction_keyword)
+        debit_or_credit = figure_out_debit_credit(account_type, sign)
+        if sign == "-":
+            print(re.sub(r"(\d+\.\d+)", r"-\1  ; {debit_or_credit}: ", line), end="")
         else:
-            print(re.sub(r"(\d+\.\d+)", r"\1  ;", line), end="")
+            print(re.sub(r"(\d+\.\d+)", r"\1  ; {debit_or_credit}: ", line), end="")
     else:
         print(line, end="")
