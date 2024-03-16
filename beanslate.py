@@ -3,17 +3,8 @@
 import re
 import sys
 
-def figure_out_debit_credit(account_type, sign):
-    if account_type == "Assets":
-        return "Debit" if sign == "+" else "Credit"
-    if account_type == "Liabilities":
-        return "Debit" if sign == "-" else "Credit"
-    if account_type == "Equity":
-        return "Debit" if sign == "-" else "Credit"
-    if account_type == "Income":
-        return "Debit" if sign == "-" else "Credit"
-    if account_type == "Expenses":
-        return "Debit" if sign == "+" else "Credit"
+def figure_out_debit_credit(sign):
+    return "Debit" if sign == "+" else "Credit"
 
 def figure_out_sign(account_type, transaction_keyword):
     try:
@@ -28,6 +19,7 @@ def figure_out_sign(account_type, transaction_keyword):
                     "receive": "+",
                     "repayment to me": "-",
                     "repayment to them": "+",
+                    "opening balance": "+",
                     # "payment": "-",
                     }[transaction_keyword]
         if account_type == "Liabilities":
@@ -41,6 +33,7 @@ def figure_out_sign(account_type, transaction_keyword):
                     }[transaction_keyword]
         if account_type == "Equity":
             return {
+                    "opening balance": "-",
                     }[transaction_keyword]
         if account_type == "Income":
             return {
@@ -63,7 +56,7 @@ for line in sys.stdin:
     transaction_keywords = ["spent", "charge", "paid", "decrease",
             "increase", "owed to me", "owed to them", "rebate", "earned",
             "received", "repaid to me", "repaid to them", "repayment to me",
-            "repayment to them", "payment"]
+            "repayment to them", "payment", "opening balance"]
     m = re.match(rf"\s+({account_types_re}):", line)
     if m:
         account_type = m.group(1)
@@ -77,10 +70,10 @@ for line in sys.stdin:
                   file=sys.stderr, end="")
             sys.exit()
         sign = figure_out_sign(account_type, transaction_keyword)
-        debit_or_credit = figure_out_debit_credit(account_type, sign)
+        debit_or_credit = figure_out_debit_credit(sign)
         if sign == "-":
-            print(re.sub(r"(\d+\.\d+)", r"-\1  ; {debit_or_credit}: ", line), end="")
+            print(re.sub(r"(\d+\.\d+)", fr"-\1  ; {debit_or_credit}: ", line), end="")
         else:
-            print(re.sub(r"(\d+\.\d+)", r"\1  ; {debit_or_credit}: ", line), end="")
+            print(re.sub(r"(\d+\.\d+)", fr"\1  ; {debit_or_credit}: ", line), end="")
     else:
         print(line, end="")
