@@ -142,3 +142,7 @@ As you can see, in both cases, you just had to put "owed to them" and
 amount in Beancount, so I should use a negative number" or "Bob is an Asset in
 my accounting, and in this case I'm owing him money, so my Asset is going
 down – so that's a negative amount".
+
+Which keywords are supported? That part is still being figured out by me... but
+at the very least, increase/decrease is supported for all account types, and
+even that I think helps a lot.

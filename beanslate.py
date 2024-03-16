@@ -7,24 +7,26 @@ SIGN_MAP = {
     "Assets": {
         "increase": "+",
         "decrease": "-",
-        "paid": "-",
-        "spend": "-",
-        "owed to me": "+",
-        "owed to them": "-",
-        "received": "+",
-        "receive": "+",
-        "repayment to me": "-",
-        "repayment to them": "+",
         "opening balance": "+",
+        "paid": "-",  # e.g. Assets:PayPal
+        "spend": "-",  # e.g. Assets:PayPal
+        "used": "-",  # e.g. Assets:Cash
+        "owed to me": "+",  # e.g. Assets:Bob
+        "owed to them": "-",  # e.g. Assets:Bob
+        "received": "+",  # e.g. Assets:PayPal
+        "receive": "+",  # e.g. Assets:PayPal
+        "repayment to me": "-",  # e.g. Assets:Bob
+        "repayment to them": "+",  # e.g. Assets:Bob
     },
     "Liabilities": {
         "increase": "-",
         "decrease": "+",
-        "owed to me": "+",
-        "owed to them": "-",
-        "charge": "-",
-        "payment": "+",
-        "repayment to them": "+",
+        "owed to me": "+",  # e.g. Liabilities:Bob
+        "owed to them": "-",  # e.g. Liabilities:Bob
+        "charge": "-",  # e.g. Liabilities:CreditCard
+        "payment": "+",  # e.g. Liabilities:CreditCard
+        "repayment to me": "-",  # e.g. Liabilities:Bob
+        "repayment to them": "+",  # e.g. Liabilities:Bob
     },
     "Equity": {
         "increase": "-",
@@ -35,14 +37,14 @@ SIGN_MAP = {
         "increase": "-",
         "decrease": "+",
         "owed to me": "-",
-        "earned": "-",
-        "income": "-",
+        "earned": "-",  # e.g. Income:Salary
+        "income": "-",  # e.g. Income:Salary
     },
     "Expenses": {
         "increase": "+",
         "decrease": "-",
-        "spent": "+",
-        "expense": "+",
+        "spent": "+",  # e.g. Expenses:Groceries
+        "expense": "+",  # e.g. Expenses:Groceries
         "rebate": "-",
     }
 }
