@@ -15,7 +15,6 @@ SIGN_MAP = {
         "repayment to me": "-",
         "repayment to them": "+",
         "opening balance": "+",
-        # "payment": "-",
     },
     "Liabilities": {
         "increase": "-",
@@ -31,9 +30,11 @@ SIGN_MAP = {
     "Income": {
         "owed to me": "-",
         "earned": "-",
+        "income": "-",
     },
     "Expenses": {
         "spent": "+",
+        "expense": "+",
         "rebate": "-",
     }
 }
@@ -71,8 +72,10 @@ for line in sys.stdin:
         assert sign in ["+", "-"]
         debit_or_credit = figure_out_debit_credit(sign)
         if sign == "-":
-            print(re.sub(r"(\d+\.\d+)", fr"-\1  ; {debit_or_credit}: ", line), end="")
+            print(re.sub(r"(\d+\.\d+)", fr"-\1  ; {debit_or_credit}: ", line),
+                  end="")
         else:
-            print(re.sub(r"(\d+\.\d+)", fr"\1  ; {debit_or_credit}: ", line), end="")
+            print(re.sub(r"(\d+\.\d+)", fr"\1  ; {debit_or_credit}: ", line),
+                  end="")
     else:
         print(line, end="")
