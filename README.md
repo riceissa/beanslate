@@ -77,6 +77,3 @@ Beanslate will then translate the above into an input acceptable by Beancount:
   Liabilities:CreditCard     21.45 USD  ; Debit, Decrease:   repayment to them
   Assets:BankAccount        -21.45 USD  ; Credit, Decrease:   decrease
 ```
-
-(there's currently a bug where the currency gets placed in a comment. this will
-soon be fixed)
