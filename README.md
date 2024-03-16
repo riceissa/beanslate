@@ -84,7 +84,9 @@ Beanslate will then translate the above into an input acceptable by Beancount:
 No more having to manually think about signed amounts or what Debit/Credit mean!
 
 Now let's say that you and your friend Bob often pay for each other's meals at
-restaurants (to simplify logistics) and later PayPal each other.  Should Bob be
+restaurants (to simplify logistics; some restaurants don't like it when
+multiple cards are used to pay for a single table's meals)
+and later PayPal each other.  Should Bob be
 an Asset (accounts receivable) or a Liability (accounts payable)?  With
 Beanslate, it doesn't matter! Let me show you what I mean. Let's first treat
 the amount owed to Bob as a Liability:
