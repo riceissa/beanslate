@@ -42,6 +42,18 @@ SIGN_MAP = {
 def figure_out_debit_credit(sign):
     return "Debit" if sign == "+" else "Credit"
 
+def figure_out_increase_decrease(account_type, sign):
+    if account_type == "Assets":
+        return "Increase" if sign == "+" else "Decrease"
+    if account_type == "Liabilities":
+        return "Increase" if sign == "-" else "Decrease"
+    if account_type == "Equity":
+        return "Increase" if sign == "-" else "Decrease"
+    if account_type == "Income":
+        return "Increase" if sign == "-" else "Decrease"
+    if account_type == "Expenses":
+        return "Increase" if sign == "+" else "Decrease"
+
 def figure_out_sign(account_type, transaction_keyword):
     try:
         return SIGN_MAP[account_type][transaction_keyword]
@@ -71,11 +83,12 @@ for line in sys.stdin:
         sign = figure_out_sign(account_type, transaction_keyword)
         assert sign in ["+", "-"]
         debit_or_credit = figure_out_debit_credit(sign)
+        increase_or_decrease = figure_out_increase_decrease(account_type, sign)
         if sign == "-":
-            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr"-\1\2\3  ; {debit_or_credit}: ", line),
+            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr"-\1\2\3  ; {debit_or_credit}, {increase_or_decrease}: ", line),
                   end="")
         else:
-            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr" \1\2\3  ; {debit_or_credit}: ", line),
+            print(re.sub(r"(\d+\.\d+)(\s+)([A-Z]+)", fr" \1\2\3  ; {debit_or_credit}, {increase_or_decrease}: ", line),
                   end="")
     else:
         print(line, end="")
