@@ -154,13 +154,29 @@ accountPart = do
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
-insertSign :: (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> (AccountName, Maybe Char, Maybe CurrenciedAmount)
-insertSign (name, Nothing, ca) = (name, Nothing, ca)
-insertSign (name, Just keyword, ca) = (name, Just $ keywordToSign (figureOutAccountType name) keyword, ca)
+keywordSign :: (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> Maybe Char
+keywordSign (name, Nothing, _) = Nothing
+keywordSign (name, Just keyword, _) = Just $ keywordToSign (figureOutAccountType name) keyword
+
+arrowSign :: String -> (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> Maybe Char
+arrowSign "from" _ = Just '-'
+arrowSign "to" _ = Just '+'
+arrowSign _ _ = Nothing
 
 -- TODO:
 -- make sure the arrow-inferred sign is the same as the keyword-inferred sign
--- validateTransaction ::
+-- validateTransaction :: ( Date
+--                       , String
+--                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+--                       , String
+--                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+--                       ) -> Maybe Transaction
+-- validateTransaction (d, nar, acclines1, ar, acclines2)
+--   | ar == "(no arrow)" = do
+--                             ac <- acclines1
+--                             let kw = keywordSign ac
+--                             case kw of
+--                                 Just s -> TransactionAccountLine
 
 -- transaction :: Parser Transaction
 transaction :: Parser ( Date
@@ -180,6 +196,7 @@ transaction = do
                                         _ <- some spaceChar
                                         acclines2 <- some (accountPart <* some spaceChar)
                                         return (ar, acclines2)
-                return $ case arrowAndBeyond of
-                            Nothing -> (d, nar, acclines1, "(no arrow)", [])
-                            Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
+                let rawTransaction = case arrowAndBeyond of
+                                        Nothing -> (d, nar, acclines1, "(no arrow)", [])
+                                        Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
+                return rawTransaction
