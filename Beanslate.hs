@@ -3,6 +3,7 @@ import Text.Megaparsec.Char
 import Control.Monad
 import Data.Void (Void)
 import Data.List (isPrefixOf)
+import Data.Maybe (isJust, fromJust)
 
 type Parser = Parsec Void String
 
@@ -35,7 +36,7 @@ type TransactionKeyword = String
 
 data TransactionAccountLine = TransactionAccountLine
     { talAccountName :: AccountName
-    , talAmount :: Int
+    , talAmount :: String
     , talSign :: Char
     } deriving (Eq, Show)
 
@@ -187,6 +188,46 @@ withBothSigns :: [RawAccountPart] -> String -> [RawAccountPart] -> [RawAccountPa
 withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
                                         where
                                             (xs1, xs2) = withArrowSign acclines1 arr acclines2
+
+validateRawAccountPartSign :: RawAccountPart -> Either String RawAccountPart
+validateRawAccountPartSign (RawAccountPart name tkw ca (Just '+') (Just '-')) = Left ("In account part " ++ name ++ " the keyword sign is + but arrow sign is -")
+validateRawAccountPartSign (RawAccountPart name tkw ca (Just '-') (Just '+')) = Left ("In account part " ++ name ++ " the keyword sign is - but arrow sign is +")
+validateRawAccountPartSign (RawAccountPart name tkw ca (Just '+') _) = Right (RawAccountPart name tkw ca (Just '+') (Just '+'))
+validateRawAccountPartSign (RawAccountPart name tkw ca (Just '-') _) = Right (RawAccountPart name tkw ca (Just '-') (Just '-'))
+validateRawAccountPartSign (RawAccountPart name tkw ca _ (Just '+')) = Right (RawAccountPart name tkw ca (Just '+') (Just '+'))
+validateRawAccountPartSign (RawAccountPart name tkw ca _ (Just '-')) = Right (RawAccountPart name tkw ca (Just '-') (Just '-'))
+validateRawAccountPartSign (RawAccountPart name tkw ca _ _) = Left ("In account part " ++ name ++ " cannot figure out sign!")
+
+-- Assume that validateRawAccountPartSign has already been run, so canonically
+-- use the keyword sign as the sign.
+signedAmount :: RawAccountPart -> Maybe Float
+signedAmount (RawAccountPart _ _ (Just ca) (Just '+') _) = Just $ (read $ caAmount ca :: Float)
+signedAmount (RawAccountPart _ _ (Just ca) (Just '-') _) = Just $ (read $ '-':(caAmount ca) :: Float)
+signedAmount (RawAccountPart _ _ Nothing _ _) = Nothing
+
+hasAmount :: RawAccountPart -> Bool
+hasAmount = isJust . signedAmount
+
+-- Assuming a filled in RawAccountPart, convert it to TransactionAccountLine
+rapToTal :: RawAccountPart -> TransactionAccountLine
+rapToTal (RawAccountPart name tkw (Just ca) (Just sign) _) = TransactionAccountLine name (caAmount ca) sign
+
+validateRawAccountParts :: [RawAccountPart] -> Either String [TransactionAccountLine]
+validateRawAccountParts raps =
+    let justs = filter hasAmount raps
+        nothings = filter (not . hasAmount) raps
+        sumOfJusts = sum (map (fromJust . signedAmount) justs) :: Float
+        insertIndex = length $ takeWhile hasAmount raps
+    in case length nothings of
+        0 -> if abs (sumOfJusts) < 0.0001
+                then Right (map rapToTal justs)
+                else Left "All values are Just but don't sum to ~zero!"
+        1 -> let missingValue = -sumOfJusts
+                 missingRap = head nothings
+                 missingTal = TransactionAccountLine (rapAccountName missingRap) (show missingValue) (fromJust $ rapKeywordSign missingRap)
+                 (before, after) = splitAt insertIndex justs
+             in Right $ (map rapToTal before) ++ [missingTal] ++ (map rapToTal after)
+        _ -> Left "More than one Nothing found!"
 
 -- TODO:
 -- * make sure the arrow-inferred sign is the same as the keyword-inferred sign
