@@ -45,6 +45,9 @@ data Transaction = Transaction
     , txnAccountLines :: [TransactionAccountLine]
     } deriving (Eq, Show)
 
+-- This represents a TransactionAccountLine with possibly missing parts.
+-- Various functions (in particular, withBothSigns) will be used to fill in the
+-- missing parts and create a complete TransactionAccountLine.
 data RawAccountPart = RawAccountPart
     { rapAccountName :: AccountName
     , rapTransactionKeyword :: Maybe TransactionKeyword
@@ -171,11 +174,6 @@ withKeywordSign' rap@(RawAccountPart name tkw ca _ ars) = RawAccountPart name tk
 
 withKeywordSign :: [RawAccountPart] -> [RawAccountPart]
 withKeywordSign = map withKeywordSign'
-
-arrowSign :: String -> (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> Maybe Char
-arrowSign "from" _ = Just '-'
-arrowSign "to" _ = Just '+'
-arrowSign _ _ = Nothing
 
 forceArrowSign :: Char -> RawAccountPart -> RawAccountPart
 forceArrowSign c (RawAccountPart name tkw ca kws _) = RawAccountPart name tkw ca kws (Just c)
