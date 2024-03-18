@@ -164,7 +164,9 @@ arrowSign "to" _ = Just '+'
 arrowSign _ _ = Nothing
 
 -- TODO:
--- make sure the arrow-inferred sign is the same as the keyword-inferred sign
+-- * make sure the arrow-inferred sign is the same as the keyword-inferred sign
+-- * make sure at most one currencied amount is missing, and if it is missing, fill it in by calculating what it must be using the other amounts
+-- * package all of that into a nice Transaction data type
 -- validateTransaction :: ( Date
 --                       , String
 --                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
