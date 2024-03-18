@@ -4,6 +4,7 @@ import Control.Monad
 import Data.Void (Void)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust, fromJust)
+import Data.Either (fromRight)
 
 type Parser = Parsec Void String
 
@@ -150,7 +151,8 @@ unsignedAmount = do
                     c <- currency
                     return $ CurrenciedAmount n c
 
-accountPart :: Parser (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)
+-- accountPart :: Parser (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)
+accountPart :: Parser RawAccountPart
 accountPart = do
                 ac <- accountName
                 _ <- some spaceChar
@@ -161,7 +163,8 @@ accountPart = do
                                               return kw
                 _ <- some spaceChar
                 am <- optional unsignedAmount
-                return (ac, keyword, am)
+                -- return (ac, keyword, am)
+                return $ RawAccountPart ac keyword am Nothing Nothing
 
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
@@ -246,13 +249,13 @@ validateRawAccountParts raps =
 --                             case kw of
 --                                 Just s -> TransactionAccountLine
 
--- transaction :: Parser Transaction
-transaction :: Parser ( Date
-                      , String
-                      , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
-                      , String
-                      , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
-                      )
+transaction :: Parser Transaction
+-- transaction :: Parser ( Date
+--                       , String
+--                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+--                       , String
+--                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+--                       )
 transaction = do
                 d <- date
                 _ <- some spaceChar
@@ -267,4 +270,7 @@ transaction = do
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
-                return rawTransaction
+                let (d, nar, acclines1, arr, acclines2) = rawTransaction
+                let raps = withBothSigns acclines1 arr acclines2
+                let raps' = fromRight [] $ sequence $ map validateRawAccountPartSign raps
+                return (Transaction d nar $ fromRight [] $ validateRawAccountParts raps')
