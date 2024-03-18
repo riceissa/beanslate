@@ -10,11 +10,12 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
                         where
                          leftOver = manyTill anySingle eof
 
-putError (Left e) = putStr $ errorBundlePretty (e :: ParseErrorBundle String Void)
+putError :: ParseErrorBundle String Void -> IO ()
+putError e = putStr $ errorBundlePretty e
 
 parseOrPrintError p input = case parseWithLeftOver p input of
                                 Right x -> print x
-                                Left e -> putError (Left e)
+                                Left e -> putError e
 
 data Date = Date
     { year :: Int
@@ -98,17 +99,23 @@ arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
 -- transaction :: Parser Transaction
-transaction :: Parser (Date, String, [(String, Maybe String, Maybe (String, String))])
+transaction :: Parser (Date, String, [(String, Maybe String, Maybe (String, String))], String, [(String, Maybe String, Maybe (String, String))])
 transaction = do
                 d <- date
                 _ <- some spaceChar
                 nar <- narration
                 _ <- some spaceChar
-                acclines <- sepBy1 (do
-                                    a <- accountPart
-                                    _ <- many spaceChar
-                                    return a)
-                                    (do
-                                    arrow
-                                    optional (some spaceChar))
-                return (d, nar, acclines)
+                acclines1 <- some (accountPart <* some spaceChar)
+                (ar, acclines2) <- do
+                                        _ <- many spaceChar
+                                        ar <- arrow
+                                        _ <- some spaceChar
+                                        acclines2 <- some (do
+                                                            ac <- accountPart
+                                                            _ <- many spaceChar
+                                                            return ac)
+                                        return (ar, acclines2)
+                return (d, nar, acclines1, ar, acclines2)
+                -- return $ case arrowAndBeyond of
+                --             Nothing -> (d, nar, acclines1, "(no arrow)", [])
+                --             Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
