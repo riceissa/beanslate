@@ -37,7 +37,7 @@ type TransactionKeyword = String
 
 data TransactionAccountLine = TransactionAccountLine
     { talAccountName :: AccountName
-    , talAmount :: String
+    , talAmount :: String  -- TODO: this should be CurrenciedAmount
     , talSign :: Char
     } deriving (Eq, Show)
 
@@ -160,10 +160,9 @@ accountPart = do
                                               _ <- char '('
                                               kw <- some (satisfy (/= ')'))
                                               _ <- char ')'
+                                              _ <- some spaceChar
                                               return kw
-                _ <- some spaceChar
                 am <- optional unsignedAmount
-                -- return (ac, keyword, am)
                 return $ RawAccountPart ac keyword am Nothing Nothing
 
 arrow :: Parser String
