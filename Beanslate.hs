@@ -12,6 +12,10 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
 
 putError (Left e) = putStr $ errorBundlePretty (e :: ParseErrorBundle String Void)
 
+parseOrPrintError p input = case parseWithLeftOver p input of
+                                Right x -> print x
+                                Left e -> putError (Left e)
+
 data Date = Date
     { year :: Int
     , month :: Int
@@ -90,9 +94,21 @@ accountPart = do
                 am <- optional unsignedAmount
                 return (ac, keyword, am)
 
+arrow :: Parser String
+arrow = string "->" <|> string "<-"
+
 -- transaction :: Parser Transaction
--- Transaction = do
---                 d <- date
---                 _ <- some spaceChar
---                 nar <- narration
---                 acclines <- 
+transaction :: Parser (Date, String, [(String, Maybe String, Maybe (String, String))])
+transaction = do
+                d <- date
+                _ <- some spaceChar
+                nar <- narration
+                _ <- some spaceChar
+                acclines <- sepBy1 (do
+                                    a <- accountPart
+                                    _ <- many spaceChar
+                                    return a)
+                                    (do
+                                    arrow
+                                    optional (some spaceChar))
+                return (d, nar, acclines)
