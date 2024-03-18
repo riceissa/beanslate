@@ -158,6 +158,10 @@ insertSign :: (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) ->
 insertSign (name, Nothing, ca) = (name, Nothing, ca)
 insertSign (name, Just keyword, ca) = (name, Just $ keywordToSign (figureOutAccountType name) keyword, ca)
 
+-- TODO:
+-- make sure the arrow-inferred sign is the same as the keyword-inferred sign
+-- validateTransaction ::
+
 -- transaction :: Parser Transaction
 transaction :: Parser ( Date
                       , String
