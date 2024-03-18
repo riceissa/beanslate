@@ -2,6 +2,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import Control.Monad
 import Data.Void (Void)
+import Data.List (isPrefixOf)
 
 type Parser = Parsec Void String
 
@@ -43,6 +44,53 @@ data Transaction = Transaction
     , txnNarration :: String
     , txnAccountLines :: [TransactionAccountLine]
     } deriving (Eq, Show)
+
+keywordToSign accountType keyword
+  | accountType == "Assets" = case keyword of
+                                "increase" -> '+'
+                                "decrease" -> '-'
+                                "opening balance" -> '+'
+                                "paid" -> '-'  -- e.g. Assets:PayPal
+                                "spend" -> '-'  -- e.g. Assets:PayPal
+                                "used" -> '-'  -- e.g. Assets:Cash
+                                "owed to me" -> '+'  -- e.g. Assets:Bob
+                                "owed to them" -> '-'  -- e.g. Assets:Bob
+                                "received" -> '+'  -- e.g. Assets:PayPal
+                                "receive" -> '+'  -- e.g. Assets:PayPal
+                                "repayment to me" -> '-'  -- e.g. Assets:Bob
+                                "repayment to them" -> '+'  -- e.g. Assets:Bob
+  | accountType == "Liabilities" = case keyword of
+                                    "increase" -> '-'
+                                    "decrease" -> '+'
+                                    "owed to me" -> '+'  -- e.g. Liabilities:Bob
+                                    "owed to them" -> '-'  -- e.g. Liabilities:Bob
+                                    "charge" -> '-'  -- e.g. Liabilities:CreditCard
+                                    "payment" -> '+'  -- e.g. Liabilities:CreditCard
+                                    "repayment to me" -> '-'  -- e.g. Liabilities:Bob
+                                    "repayment to them" -> '+'  -- e.g. Liabilities:Bob
+  | accountType == "Equity" = case keyword of
+                                "increase" -> '-'
+                                "decrease" -> '+'
+                                "opening balance" -> '-'
+  | accountType == "Income" = case keyword of
+                                "increase" -> '-'
+                                "decrease" -> '+'
+                                "owed to me" -> '-'
+                                "earned" -> '-'  -- e.g. Income:Salary
+                                "income" -> '-'  -- e.g. Income:Salary
+  | accountType == "Expenses" = case keyword of
+                                    "increase" -> '+'
+                                    "decrease" -> '-'
+                                    "spent" -> '+'  -- e.g. Expenses:Groceries
+                                    "expense" -> '+'  -- e.g. Expenses:Groceries
+                                    "rebate" -> '-'
+
+figureOutAccountType name
+  | "Assets" `isPrefixOf` name = "Assets"
+  | "Liabilities" `isPrefixOf` name = "Liabilities"
+  | "Equity" `isPrefixOf` name = "Equity"
+  | "Income" `isPrefixOf` name = "Income"
+  | "Expenses" `isPrefixOf` name = "Expenses"
 
 date :: Parser Date
 date = do
@@ -106,8 +154,17 @@ accountPart = do
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
+insertSign :: (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> (AccountName, Maybe Char, Maybe CurrenciedAmount)
+insertSign (name, Nothing, ca) = (name, Nothing, ca)
+insertSign (name, Just keyword, ca) = (name, Just $ keywordToSign (figureOutAccountType name) keyword, ca)
+
 -- transaction :: Parser Transaction
-transaction :: Parser (Date, String, [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)], String, [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)])
+transaction :: Parser ( Date
+                      , String
+                      , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+                      , String
+                      , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
+                      )
 transaction = do
                 d <- date
                 _ <- some spaceChar
