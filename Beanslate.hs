@@ -45,6 +45,14 @@ data Transaction = Transaction
     , txnAccountLines :: [TransactionAccountLine]
     } deriving (Eq, Show)
 
+data RawAccountPart = RawAccountPart
+    { rapAccountName :: AccountName
+    , rapTransactionKeyword :: Maybe TransactionKeyword
+    , rapCurrenciedAmount :: Maybe CurrenciedAmount
+    , rapKeywordSign :: Maybe Char
+    , rapArrowSign :: Maybe Char
+    } deriving (Eq, Show)
+
 keywordToSign accountType keyword
   | accountType == "Assets" = case keyword of
                                 "increase" -> '+'
@@ -154,14 +162,33 @@ accountPart = do
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
-keywordSign :: (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> Maybe Char
-keywordSign (name, Nothing, _) = Nothing
-keywordSign (name, Just keyword, _) = Just $ keywordToSign (figureOutAccountType name) keyword
+keywordSign :: RawAccountPart -> Maybe Char
+keywordSign (RawAccountPart _ Nothing _ _ _) = Nothing
+keywordSign (RawAccountPart name (Just keyword) _ _ _) = Just $ keywordToSign (figureOutAccountType name) keyword
+
+withKeywordSign' :: RawAccountPart -> RawAccountPart
+withKeywordSign' rap@(RawAccountPart name tkw ca _ ars) = RawAccountPart name tkw ca (keywordSign rap) ars
+
+withKeywordSign :: [RawAccountPart] -> [RawAccountPart]
+withKeywordSign = map withKeywordSign'
 
 arrowSign :: String -> (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount) -> Maybe Char
 arrowSign "from" _ = Just '-'
 arrowSign "to" _ = Just '+'
 arrowSign _ _ = Nothing
+
+forceArrowSign :: Char -> RawAccountPart -> RawAccountPart
+forceArrowSign c (RawAccountPart name tkw ca kws _) = RawAccountPart name tkw ca kws (Just c)
+
+withArrowSign :: [RawAccountPart] -> String -> [RawAccountPart] -> ([RawAccountPart], [RawAccountPart])
+withArrowSign acclines1 "->" acclines2 = (map (forceArrowSign '-') acclines1, map (forceArrowSign '+') acclines2)
+withArrowSign acclines1 "<-" acclines2 = (map (forceArrowSign '+') acclines1, map (forceArrowSign '-') acclines2)
+withArrowSign acclines1 _ acclines2 = (acclines1, acclines2)
+
+withBothSigns :: [RawAccountPart] -> String -> [RawAccountPart] -> [RawAccountPart]
+withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
+                                        where
+                                            (xs1, xs2) = withArrowSign acclines1 arr acclines2
 
 -- TODO:
 -- * make sure the arrow-inferred sign is the same as the keyword-inferred sign
