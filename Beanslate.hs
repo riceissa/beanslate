@@ -106,16 +106,12 @@ transaction = do
                 nar <- narration
                 _ <- some spaceChar
                 acclines1 <- some (accountPart <* some spaceChar)
-                (ar, acclines2) <- do
+                arrowAndBeyond <- optional . try $ do
                                         _ <- many spaceChar
                                         ar <- arrow
                                         _ <- some spaceChar
-                                        acclines2 <- some (do
-                                                            ac <- accountPart
-                                                            _ <- many spaceChar
-                                                            return ac)
+                                        acclines2 <- some (accountPart <* some spaceChar)
                                         return (ar, acclines2)
-                return (d, nar, acclines1, ar, acclines2)
-                -- return $ case arrowAndBeyond of
-                --             Nothing -> (d, nar, acclines1, "(no arrow)", [])
-                --             Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
+                return $ case arrowAndBeyond of
+                            Nothing -> (d, nar, acclines1, "(no arrow)", [])
+                            Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
