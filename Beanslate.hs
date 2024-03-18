@@ -23,17 +23,26 @@ data Date = Date
     , day :: Int
     } deriving (Eq, Show)
 
+data CurrenciedAmount = CurrenciedAmount
+    { caAmount :: String
+    , caCurrency :: String
+    } deriving (Eq, Show)
+
+type AccountName = String
+
+type TransactionKeyword = String
+
 data TransactionAccountLine = TransactionAccountLine
-    { talAccountName :: String
+    { talAccountName :: AccountName
     , talAmount :: Int
     , talSign :: Char
-    }
+    } deriving (Eq, Show)
 
 data Transaction = Transaction
     { txnDate :: Date
     , txnNarration :: String
     , txnAccountLines :: [TransactionAccountLine]
-    }
+    } deriving (Eq, Show)
 
 date :: Parser Date
 date = do
@@ -74,15 +83,14 @@ unsignedValue = do
 currency :: Parser String
 currency = some upperChar
 
-unsignedAmount :: Parser (String, String)
+unsignedAmount :: Parser CurrenciedAmount
 unsignedAmount = do
                     n <- unsignedValue
                     _ <- some spaceChar
                     c <- currency
-                    return (n, c)
+                    return $ CurrenciedAmount n c
 
---                    (account name, transaction keyword, amount)
-accountPart :: Parser (String, Maybe String, Maybe (String, String))
+accountPart :: Parser (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)
 accountPart = do
                 ac <- accountName
                 _ <- some spaceChar
@@ -99,7 +107,7 @@ arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
 -- transaction :: Parser Transaction
-transaction :: Parser (Date, String, [(String, Maybe String, Maybe (String, String))], String, [(String, Maybe String, Maybe (String, String))])
+transaction :: Parser (Date, String, [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)], String, [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)])
 transaction = do
                 d <- date
                 _ <- some spaceChar
@@ -107,7 +115,6 @@ transaction = do
                 _ <- some spaceChar
                 acclines1 <- some (accountPart <* some spaceChar)
                 arrowAndBeyond <- optional . try $ do
-                                        _ <- many spaceChar
                                         ar <- arrow
                                         _ <- some spaceChar
                                         acclines2 <- some (accountPart <* some spaceChar)
