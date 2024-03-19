@@ -258,8 +258,7 @@ transaction = do
                 let (d, nar, acclines1, arr, acclines2) = rawTransaction
                 let raps = withBothSigns acclines1 arr acclines2
                 let raps' = sequence $ map validateRawAccountPartSign raps
-                return $ case raps' of
-                            Left e -> Left e
-                            Right x -> case validateRawAccountParts x of
-                                            Left e -> Left e
-                                            Right v -> Right (Transaction d nar v)
+                return $ do
+                            x <- raps'
+                            v <- validateRawAccountParts x
+                            Right $ Transaction d nar v
