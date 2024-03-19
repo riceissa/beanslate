@@ -233,7 +233,7 @@ validateRawAccountParts raps =
              in Right $ (map rapToTal before) ++ [missingTal] ++ (map rapToTal after)
         _ -> Left "More than one Nothing found!"
 
-transaction :: Parser Transaction
+transaction :: Parser (Either String Transaction)
 transaction = do
                 d <- date
                 _ <- some spaceChar
@@ -250,5 +250,9 @@ transaction = do
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
                 let (d, nar, acclines1, arr, acclines2) = rawTransaction
                 let raps = withBothSigns acclines1 arr acclines2
-                let raps' = fromRight [] $ sequence $ map validateRawAccountPartSign raps
-                return (Transaction d nar $ fromRight [] $ validateRawAccountParts raps')
+                let raps' = sequence $ map validateRawAccountPartSign raps
+                return $ case raps' of
+                            Left e -> Left e
+                            Right x -> case validateRawAccountParts x of
+                                            Left e -> Left e
+                                            Right v -> Right (Transaction d nar v)
