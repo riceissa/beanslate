@@ -251,7 +251,7 @@ validateRawAccountParts raps =
         0 -> if abs (sumOfJusts) < 0.0001
                 then Right (map rapToTal justs)
                 else Left "All values are Just but don't sum to ~zero!"
-        1 -> let missingValue = -sumOfJusts
+        1 -> let missingValue = abs sumOfJusts
                  missingRap = head nothings
                  missingTal = TransactionAccountLine (rapAccountName missingRap) (show missingValue) (fromJust $ rapKeywordSign missingRap)
                  (before, after) = splitAt insertIndex justs
