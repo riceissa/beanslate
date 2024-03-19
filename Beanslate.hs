@@ -262,12 +262,11 @@ transaction = do
                 d <- date
                 _ <- some spaceChar
                 nar <- narration
-                _ <- some spaceChar
-                acclines1 <- some (accountPart <* some spaceChar)
+                acclines1 <- some (some spaceChar *> accountPart)
                 arrowAndBeyond <- optional . try $ do
-                                        ar <- arrow
                                         _ <- some spaceChar
-                                        acclines2 <- some (accountPart <* some spaceChar)
+                                        ar <- arrow
+                                        acclines2 <- some (some spaceChar *> accountPart)
                                         return (ar, acclines2)
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
