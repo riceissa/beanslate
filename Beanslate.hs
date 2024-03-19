@@ -5,6 +5,7 @@ import Data.Void (Void)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust, fromJust)
 import Data.Either (fromRight)
+import System.IO
 
 type Parser = Parsec Void String
 
@@ -19,6 +20,11 @@ putError e = putStr $ errorBundlePretty e
 parseOrPrintError p input = case parseWithLeftOver p input of
                                 Right x -> print x
                                 Left e -> putError e
+
+-- Use like parseOrPrintErrorFromFile transaction "example.txt"
+parseOrPrintErrorFromFile p filename = do
+                                         input <- readFile filename
+                                         parseOrPrintError p input
 
 data Date = Date
     { year :: Int
