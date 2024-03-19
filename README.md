@@ -148,3 +148,63 @@ down – so that's a negative amount".
 Which keywords are supported? That part is still being figured out by me... but
 at the very least, increase/decrease is supported for all account types, and
 even that I think helps a lot.
+
+## Arrow notation
+
+The newer implementation `Beanslate.hs` actually parses the input (rather than
+just doing regex search-and-replace) and supports the arrow notation suggested
+by the Reddit user captain\_currie.
+
+For example, we can parse the file [`reddit.txt`](https://github.com/riceissa/beanslate/blob/master/reddit.txt):
+
+```bash
+$ ghci Beanslate.hs
+ghci> parseOrPrintErrorFromFile (some transaction) "reddit.txt"
+([Right (Transaction {txnDate = Date {year = 2024, month = 3, day = 17},
+                      txnNarration = "Buy a book",
+                      txnAccountLines = [
+                        TransactionAccountLine {
+                          talAccountName = "Expenses:Entertainment",
+                          talAmount = "8.95",
+                          talSign = '+'},
+                        TransactionAccountLine {
+                          talAccountName = "Liabilities:CreditCard",
+                          talAmount = "8.95",
+                          talSign = '-'}]}),
+  Right (Transaction {txnDate = Date {year = 2024, month = 3, day = 17},
+                      txnNarration = "Buy a book",
+                      txnAccountLines = [
+                        TransactionAccountLine {
+                          talAccountName = "Expenses:Entertainment",
+                          talAmount = "8.95",
+                          talSign = '+'},
+                        TransactionAccountLine {
+                          talAccountName = "Liabilities:CreditCard",
+                          talAmount = "8.95",
+                          talSign = '-'}]}),
+  Right (Transaction {txnDate = Date {year = 2024, month = 3, day = 17},
+                      txnNarration = "Buy a book",
+                      txnAccountLines = [
+                        TransactionAccountLine {
+                          talAccountName = "Liabilities:CreditCard",
+                          talAmount = "-8.95",
+                          talSign = '-'},
+                        TransactionAccountLine {
+                          talAccountName = "Expenses:Entertainment",
+                          talAmount = "8.95",
+                          talSign = '+'}]}),
+  Right (Transaction {txnDate = Date {year = 2024, month = 3, day = 17},
+                      txnNarration = "Buy a book",
+                      txnAccountLines = [
+                        TransactionAccountLine {
+                          talAccountName = "Liabilities:CreditCard",
+                          talAmount = "-8.95",
+                          talSign = '-'},
+                        TransactionAccountLine {
+                          talAccountName = "Expenses:Entertainment",
+                          talAmount = "8.95",
+                          talSign = '+'}]})],"")
+```
+
+The output is a bit messy so I've "pretty-printed" it. Hopefully you can see
+that all four input styles get parsed in the same way.

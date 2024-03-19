@@ -1,0 +1,12 @@
+2024-03-17 "Buy a book"
+  Expenses:Entertainment   (expense)    8.95 USD
+  Liabilities:CreditCard   (charge)     8.95 USD
+
+2024-03-17 "Buy a book"
+  Expenses:Entertainment (expense) <- Liabilities:CreditCard (charge)   8.95 USD
+
+2024-03-17 "Buy a book"
+  Liabilities:CreditCard (charge) -> Expenses:Entertainment (expense)   8.95 USD
+
+2024-03-17 "Buy a book"
+  Liabilities:CreditCard -> Expenses:Entertainment  8.95 USD
