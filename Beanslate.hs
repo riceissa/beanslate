@@ -79,6 +79,7 @@ keywordToSign accountType keyword
                                 "receive" -> Just '+'  -- e.g. Assets:PayPal
                                 "repayment to me" -> Just '-'  -- e.g. Assets:Bob
                                 "repayment to them" -> Just '+'  -- e.g. Assets:Bob
+                                _ -> Nothing
   | accountType == "Liabilities" = case keyword of
                                     "increase" -> Just '-'
                                     "decrease" -> Just '+'
@@ -88,22 +89,26 @@ keywordToSign accountType keyword
                                     "payment" -> Just '+'  -- e.g. Liabilities:CreditCard
                                     "repayment to me" -> Just '-'  -- e.g. Liabilities:Bob
                                     "repayment to them" -> Just '+'  -- e.g. Liabilities:Bob
+                                    _ -> Nothing
   | accountType == "Equity" = case keyword of
                                 "increase" -> Just '-'
                                 "decrease" -> Just '+'
                                 "opening balance" -> Just '-'
+                                _ -> Nothing
   | accountType == "Income" = case keyword of
                                 "increase" -> Just '-'
                                 "decrease" -> Just '+'
                                 "owed to me" -> Just '-'
                                 "earned" -> Just '-'  -- e.g. Income:Salary
                                 "income" -> Just '-'  -- e.g. Income:Salary
+                                _ -> Nothing
   | accountType == "Expenses" = case keyword of
                                     "increase" -> Just '+'
                                     "decrease" -> Just '-'
                                     "spent" -> Just '+'  -- e.g. Expenses:Groceries
                                     "expense" -> Just '+'  -- e.g. Expenses:Groceries
                                     "rebate" -> Just '-'
+                                    _ -> Nothing
   | otherwise = Nothing
 
 figureOutAccountType name
@@ -176,15 +181,26 @@ accountPart = do
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
-keywordSign :: RawAccountPart -> Maybe Char
-keywordSign (RawAccountPart _ Nothing _ _ _) = Nothing
-keywordSign (RawAccountPart name (Just keyword) _ _ _) = keywordToSign (figureOutAccountType name) keyword
+-- If the RawAccountPart has no keyword, then that's okay because we can maybe
+-- infer it from an arrow. But if RawAccountPart has an incorrect keyword that
+-- doesn't apply to this account type, or an account type that's not valid, then
+-- we want to propagate that error message forward.
+keywordSign :: RawAccountPart -> Either String (Maybe Char)
+keywordSign (RawAccountPart _ Nothing _ _ _) = Right Nothing
+keywordSign (RawAccountPart name (Just keyword) _ _ _) =
+    let sign = keywordToSign (figureOutAccountType name) keyword
+     in case sign of
+            Nothing -> Left $ "The keyword " ++ keyword ++ " does not apply to this account type!"
+            Just x -> Right (Just x)
 
-withKeywordSign' :: RawAccountPart -> RawAccountPart
-withKeywordSign' rap@(RawAccountPart name tkw ca _ ars) = RawAccountPart name tkw ca (keywordSign rap) ars
+withKeywordSign' :: RawAccountPart -> Either String RawAccountPart
+withKeywordSign' rap@(RawAccountPart name tkw ca _ ars) =
+    do
+        sign <- keywordSign rap
+        return $ RawAccountPart name tkw ca sign ars
 
-withKeywordSign :: [RawAccountPart] -> [RawAccountPart]
-withKeywordSign = map withKeywordSign'
+withKeywordSign :: [RawAccountPart] -> Either String [RawAccountPart]
+withKeywordSign = traverse withKeywordSign'
 
 forceArrowSign :: Char -> RawAccountPart -> RawAccountPart
 forceArrowSign c (RawAccountPart name tkw ca kws _) = RawAccountPart name tkw ca kws (Just c)
@@ -194,7 +210,7 @@ withArrowSign acclines1 "->" acclines2 = (map (forceArrowSign '-') acclines1, ma
 withArrowSign acclines1 "<-" acclines2 = (map (forceArrowSign '+') acclines1, map (forceArrowSign '-') acclines2)
 withArrowSign acclines1 _ acclines2 = (acclines1, acclines2)
 
-withBothSigns :: [RawAccountPart] -> String -> [RawAccountPart] -> [RawAccountPart]
+withBothSigns :: [RawAccountPart] -> String -> [RawAccountPart] -> Either String [RawAccountPart]
 withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
                                         where
                                             (xs1, xs2) = withArrowSign acclines1 arr acclines2
@@ -257,9 +273,8 @@ transaction = do
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
                 let (d, nar, acclines1, arr, acclines2) = rawTransaction
-                let raps = withBothSigns acclines1 arr acclines2
-                let raps' = sequence $ map validateRawAccountPartSign raps
                 return $ do
-                            x <- raps'
-                            v <- validateRawAccountParts x
+                            raps <- withBothSigns acclines1 arr acclines2
+                            raps' <- sequence $ map validateRawAccountPartSign raps
+                            v <- validateRawAccountParts raps'
                             Right $ Transaction d nar v
