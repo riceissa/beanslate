@@ -151,7 +151,6 @@ unsignedAmount = do
                     c <- currency
                     return $ CurrenciedAmount n c
 
--- accountPart :: Parser (AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)
 accountPart :: Parser RawAccountPart
 accountPart = do
                 ac <- accountName
@@ -191,6 +190,7 @@ withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
                                         where
                                             (xs1, xs2) = withArrowSign acclines1 arr acclines2
 
+-- Make sure the keyword-inferred sign is the same as the arrow-inferred sign
 validateRawAccountPartSign :: RawAccountPart -> Either String RawAccountPart
 validateRawAccountPartSign (RawAccountPart name tkw ca (Just '+') (Just '-')) = Left ("In account part " ++ name ++ " the keyword sign is + but arrow sign is -")
 validateRawAccountPartSign (RawAccountPart name tkw ca (Just '-') (Just '+')) = Left ("In account part " ++ name ++ " the keyword sign is - but arrow sign is +")
@@ -214,6 +214,8 @@ hasAmount = isJust . signedAmount
 rapToTal :: RawAccountPart -> TransactionAccountLine
 rapToTal (RawAccountPart name tkw (Just ca) (Just sign) _) = TransactionAccountLine name (caAmount ca) sign
 
+-- Make sure at most one currencied amount is missing, and if it is missing,
+-- fill it in by calculating what it must be using the other amounts
 validateRawAccountParts :: [RawAccountPart] -> Either String [TransactionAccountLine]
 validateRawAccountParts raps =
     let justs = filter hasAmount raps
@@ -231,30 +233,7 @@ validateRawAccountParts raps =
              in Right $ (map rapToTal before) ++ [missingTal] ++ (map rapToTal after)
         _ -> Left "More than one Nothing found!"
 
--- TODO:
--- * make sure the arrow-inferred sign is the same as the keyword-inferred sign
--- * make sure at most one currencied amount is missing, and if it is missing, fill it in by calculating what it must be using the other amounts
--- * package all of that into a nice Transaction data type
--- validateTransaction :: ( Date
---                       , String
---                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
---                       , String
---                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
---                       ) -> Maybe Transaction
--- validateTransaction (d, nar, acclines1, ar, acclines2)
---   | ar == "(no arrow)" = do
---                             ac <- acclines1
---                             let kw = keywordSign ac
---                             case kw of
---                                 Just s -> TransactionAccountLine
-
 transaction :: Parser Transaction
--- transaction :: Parser ( Date
---                       , String
---                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
---                       , String
---                       , [(AccountName, Maybe TransactionKeyword, Maybe CurrenciedAmount)]
---                       )
 transaction = do
                 d <- date
                 _ <- some spaceChar
