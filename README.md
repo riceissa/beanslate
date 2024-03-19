@@ -159,7 +159,7 @@ For example, we can parse the file [`reddit.txt`](https://github.com/riceissa/be
 
 ```bash
 $ ghci Beanslate.hs
-ghci> parseOrPrintErrorFromFile (some $ transaction <* some spaceChar) "reddit.txt"
+ghci> parseOrPrintErrorFromFile (sepEndBy1 transaction (some spaceChar)) "reddit.txt"
 ([Right (Transaction {txnDate = Date {year = 2024, month = 3, day = 17},
                       txnNarration = "Buy a book",
                       txnAccountLines = [
