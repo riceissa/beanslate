@@ -199,13 +199,12 @@ withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
 
 -- Make sure the keyword-inferred sign is the same as the arrow-inferred sign
 validateRawAccountPartSign :: RawAccountPart -> Either String RawAccountPart
-validateRawAccountPartSign (RawAccountPart name tkw ca (Just '+') (Just '-')) = Left ("In account part " ++ name ++ " the keyword sign is + but arrow sign is -")
-validateRawAccountPartSign (RawAccountPart name tkw ca (Just '-') (Just '+')) = Left ("In account part " ++ name ++ " the keyword sign is - but arrow sign is +")
-validateRawAccountPartSign (RawAccountPart name tkw ca (Just '+') _) = Right (RawAccountPart name tkw ca (Just '+') (Just '+'))
-validateRawAccountPartSign (RawAccountPart name tkw ca (Just '-') _) = Right (RawAccountPart name tkw ca (Just '-') (Just '-'))
-validateRawAccountPartSign (RawAccountPart name tkw ca _ (Just '+')) = Right (RawAccountPart name tkw ca (Just '+') (Just '+'))
-validateRawAccountPartSign (RawAccountPart name tkw ca _ (Just '-')) = Right (RawAccountPart name tkw ca (Just '-') (Just '-'))
-validateRawAccountPartSign (RawAccountPart name tkw ca _ _) = Left ("In account part " ++ name ++ " cannot figure out sign!")
+validateRawAccountPartSign (RawAccountPart name tkw ca kwSign arrSign)
+  | kwSign == Just '+' && arrSign == Just '-' = Left ("In account part " ++ name ++ " the keyword sign is + but arrow sign is -")
+  | kwSign == Just '-' && arrSign == Just '+' = Left ("In account part " ++ name ++ " the keyword sign is - but arrow sign is +")
+  | kwSign == Just '+' || arrSign == Just '+' = Right (RawAccountPart name tkw ca (Just '+') (Just '+'))
+  | kwSign == Just '-' || arrSign == Just '-' = Right (RawAccountPart name tkw ca (Just '-') (Just '-'))
+  | otherwise = Left ("In account part " ++ name ++ " cannot figure out sign!")
 
 -- Assume that validateRawAccountPartSign has already been run, so canonically
 -- use the keyword sign as the sign.
