@@ -64,45 +64,47 @@ data RawAccountPart = RawAccountPart
     , rapArrowSign :: Maybe Char
     } deriving (Eq, Show)
 
+keywordToSign :: String -> String -> Maybe Char
 keywordToSign accountType keyword
   | accountType == "Assets" = case keyword of
-                                "increase" -> '+'
-                                "decrease" -> '-'
-                                "opening balance" -> '+'
-                                "paid" -> '-'  -- e.g. Assets:PayPal
-                                "spend" -> '-'  -- e.g. Assets:PayPal
-                                "used" -> '-'  -- e.g. Assets:Cash
-                                "owed to me" -> '+'  -- e.g. Assets:Bob
-                                "owed to them" -> '-'  -- e.g. Assets:Bob
-                                "received" -> '+'  -- e.g. Assets:PayPal
-                                "receive" -> '+'  -- e.g. Assets:PayPal
-                                "repayment to me" -> '-'  -- e.g. Assets:Bob
-                                "repayment to them" -> '+'  -- e.g. Assets:Bob
+                                "increase" -> Just '+'
+                                "decrease" -> Just '-'
+                                "opening balance" -> Just '+'
+                                "paid" -> Just '-'  -- e.g. Assets:PayPal
+                                "spend" -> Just '-'  -- e.g. Assets:PayPal
+                                "used" -> Just '-'  -- e.g. Assets:Cash
+                                "owed to me" -> Just '+'  -- e.g. Assets:Bob
+                                "owed to them" -> Just '-'  -- e.g. Assets:Bob
+                                "received" -> Just '+'  -- e.g. Assets:PayPal
+                                "receive" -> Just '+'  -- e.g. Assets:PayPal
+                                "repayment to me" -> Just '-'  -- e.g. Assets:Bob
+                                "repayment to them" -> Just '+'  -- e.g. Assets:Bob
   | accountType == "Liabilities" = case keyword of
-                                    "increase" -> '-'
-                                    "decrease" -> '+'
-                                    "owed to me" -> '+'  -- e.g. Liabilities:Bob
-                                    "owed to them" -> '-'  -- e.g. Liabilities:Bob
-                                    "charge" -> '-'  -- e.g. Liabilities:CreditCard
-                                    "payment" -> '+'  -- e.g. Liabilities:CreditCard
-                                    "repayment to me" -> '-'  -- e.g. Liabilities:Bob
-                                    "repayment to them" -> '+'  -- e.g. Liabilities:Bob
+                                    "increase" -> Just '-'
+                                    "decrease" -> Just '+'
+                                    "owed to me" -> Just '+'  -- e.g. Liabilities:Bob
+                                    "owed to them" -> Just '-'  -- e.g. Liabilities:Bob
+                                    "charge" -> Just '-'  -- e.g. Liabilities:CreditCard
+                                    "payment" -> Just '+'  -- e.g. Liabilities:CreditCard
+                                    "repayment to me" -> Just '-'  -- e.g. Liabilities:Bob
+                                    "repayment to them" -> Just '+'  -- e.g. Liabilities:Bob
   | accountType == "Equity" = case keyword of
-                                "increase" -> '-'
-                                "decrease" -> '+'
-                                "opening balance" -> '-'
+                                "increase" -> Just '-'
+                                "decrease" -> Just '+'
+                                "opening balance" -> Just '-'
   | accountType == "Income" = case keyword of
-                                "increase" -> '-'
-                                "decrease" -> '+'
-                                "owed to me" -> '-'
-                                "earned" -> '-'  -- e.g. Income:Salary
-                                "income" -> '-'  -- e.g. Income:Salary
+                                "increase" -> Just '-'
+                                "decrease" -> Just '+'
+                                "owed to me" -> Just '-'
+                                "earned" -> Just '-'  -- e.g. Income:Salary
+                                "income" -> Just '-'  -- e.g. Income:Salary
   | accountType == "Expenses" = case keyword of
-                                    "increase" -> '+'
-                                    "decrease" -> '-'
-                                    "spent" -> '+'  -- e.g. Expenses:Groceries
-                                    "expense" -> '+'  -- e.g. Expenses:Groceries
-                                    "rebate" -> '-'
+                                    "increase" -> Just '+'
+                                    "decrease" -> Just '-'
+                                    "spent" -> Just '+'  -- e.g. Expenses:Groceries
+                                    "expense" -> Just '+'  -- e.g. Expenses:Groceries
+                                    "rebate" -> Just '-'
+  | otherwise = Nothing
 
 figureOutAccountType name
   | "Assets" `isPrefixOf` name = "Assets"
@@ -176,7 +178,7 @@ arrow = string "->" <|> string "<-"
 
 keywordSign :: RawAccountPart -> Maybe Char
 keywordSign (RawAccountPart _ Nothing _ _ _) = Nothing
-keywordSign (RawAccountPart name (Just keyword) _ _ _) = Just $ keywordToSign (figureOutAccountType name) keyword
+keywordSign (RawAccountPart name (Just keyword) _ _ _) = keywordToSign (figureOutAccountType name) keyword
 
 withKeywordSign' :: RawAccountPart -> RawAccountPart
 withKeywordSign' rap@(RawAccountPart name tkw ca _ ars) = RawAccountPart name tkw ca (keywordSign rap) ars
