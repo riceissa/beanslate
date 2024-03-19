@@ -158,14 +158,15 @@ unsignedValue = do
 currency :: Parser String
 currency = some upperChar
 
-unsignedAmount :: Parser CurrenciedAmount
+unsignedAmount :: Parser (Either String CurrenciedAmount)
 unsignedAmount = do
                     n <- unsignedValue
-                    _ <- some spaceChar
-                    c <- currency
-                    return $ CurrenciedAmount n c
+                    c <- optional . try $ some spaceChar *> currency
+                    return $ case c of
+                                Nothing -> Left "Amount was found, but no currency (e.g. USD) was found!"
+                                Just x -> Right $ CurrenciedAmount n x
 
-accountPart :: Parser RawAccountPart
+accountPart :: Parser (Either String RawAccountPart)
 accountPart = do
                 ac <- accountName
                 keyword <- optional . try $ do
@@ -177,7 +178,11 @@ accountPart = do
                 am <- optional . try $ do
                                          _ <- some spaceChar
                                          unsignedAmount
-                return $ RawAccountPart ac keyword am Nothing Nothing
+                return $ case am of
+                            Nothing -> Right $ RawAccountPart ac keyword Nothing Nothing Nothing
+                            Just v -> do
+                                        am' <- v
+                                        Right $ RawAccountPart ac keyword (Just am') Nothing Nothing
 
 arrow :: Parser String
 arrow = string "->" <|> string "<-"
@@ -278,7 +283,9 @@ transaction = do
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
                 let (d, nar, acclines1, arr, acclines2) = rawTransaction
                 return $ do
-                            raps <- withBothSigns acclines1 arr acclines2
+                            al1 <- sequence acclines1
+                            al2 <- sequence acclines2
+                            raps <- withBothSigns al1 arr al2
                             raps' <- sequence $ map validateRawAccountPartSign raps
                             v <- validateRawAccountParts raps'
                             Right $ Transaction d nar v
