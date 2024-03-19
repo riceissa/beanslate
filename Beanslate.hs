@@ -20,6 +20,7 @@ putError e = putStr $ errorBundlePretty e
 parseOrPrintError p input = case parseWithLeftOver p input of
                                 Right x -> print x
                                 Left e -> putError e
+                                -- Left e -> putStrLn $ show e
 
 -- Use like parseOrPrintErrorFromFile transaction "example.txt"
 parseOrPrintErrorFromFile p filename = do
@@ -262,11 +263,15 @@ transaction = do
                 d <- date
                 _ <- some spaceChar
                 nar <- narration
-                acclines1 <- some (some spaceChar *> accountPart)
+                -- Without the try, the line below will start trying to match
+                -- another accountPart as soon as it sees the next space. Then
+                -- if it doesn't immediately match another accountPart, it will
+                -- produce a parse error.
+                acclines1 <- some (try $ some spaceChar *> accountPart)
                 arrowAndBeyond <- optional . try $ do
                                         _ <- some spaceChar
                                         ar <- arrow
-                                        acclines2 <- some (some spaceChar *> accountPart)
+                                        acclines2 <- some (try $ some spaceChar *> accountPart)
                                         return (ar, acclines2)
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
