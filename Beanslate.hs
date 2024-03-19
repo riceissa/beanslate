@@ -154,14 +154,15 @@ unsignedAmount = do
 accountPart :: Parser RawAccountPart
 accountPart = do
                 ac <- accountName
-                _ <- some spaceChar
                 keyword <- optional . try $ do
+                                              _ <- some spaceChar
                                               _ <- char '('
                                               kw <- some (satisfy (/= ')'))
                                               _ <- char ')'
-                                              _ <- some spaceChar
                                               return kw
-                am <- optional unsignedAmount
+                am <- optional . try $ do
+                                         _ <- some spaceChar
+                                         unsignedAmount
                 return $ RawAccountPart ac keyword am Nothing Nothing
 
 arrow :: Parser String
