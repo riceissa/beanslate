@@ -155,9 +155,15 @@ unsignedValue = do
                                 Nothing -> integerPart
                                 Just v -> integerPart ++ v
 
+-- Parse a Beancount currency, which is just a string of uppercase characters,
+-- like "USD" or "EUR". (TODO: Beancount is slightly more flexible than this in
+-- that it allows certain special characters in the currency symbol, so
+-- eventually the code below should be changed to support exactly the currency
+-- strings that Beancount supports.)
 currency :: Parser String
 currency = some upperChar
 
+-- Parse an unsigned monetary amount like "12.50 USD".
 unsignedAmount :: Parser (Either String CurrenciedAmount)
 unsignedAmount = do
                     n <- unsignedValue
