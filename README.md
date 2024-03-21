@@ -53,16 +53,13 @@ With Beanslate, you can instead input the following:
 
 ```
 2024-03-15 "Buy some food"
-  Expenses:Groceries        12.50 USD  expense
-  Liabilities:CreditCard    12.50 USD  charge
+  Liabilities:CreditCard (charge) -> Expenses:Groceries (expense)   12.50 USD
 
 2024-03-15 "Buy a book"
-  Expenses:Entertainment     8.95 USD  expense
-  Liabilities:CreditCard     8.95 USD  charge
+  Liabilities:CreditCard (charge) -> Expenses:Entertainment (expense)    8.95 USD
 
 2024-03-15 "Pay off credit card"
-  Liabilities:CreditCard    21.45 USD  repayment to them
-  Assets:BankAccount        21.45 USD  decrease
+  Assets:BankAccount (decrease) -> Liabilities:CreditCard (repayment to them)     21.45 USD
 ```
 
 Beanslate will then translate the above into an input acceptable by Beancount:
@@ -93,12 +90,10 @@ the amount owed to Bob as a Liability:
 
 ```
 2024-03-16 "Bob buys me lunch"
-  Liabilities:Bob   15.00 USD  owed to them
-  Expenses:Dining   15.00 USD  expense
+  Liabilities:Bob (owed to them) -> Expenses:Dining (expense)    15.00 USD
 
 2024-03-16 "Pay Bob back for lunch"
-  Liabilities:Bob   15.00 USD  repayment to them
-  Assets:PayPal     15.00 USD  spend
+  Assets:PayPal (spend) -> Liabilities:Bob (repayment to them)   15.00 USD
 ```
 
 This is translated to:
@@ -118,12 +113,10 @@ asset:
 
 ```
 2024-03-16 "Bob buys me lunch"
-  Assets:Bob        15.00 USD  owed to them
-  Expenses:Dining   15.00 USD  expense
+  Assets:Bob (owed to them) -> Expenses:Dining (expense)    15.00 USD
 
 2024-03-16 "Pay Bob back for lunch"
-  Assets:Bob        15.00 USD  repayment to them
-  Assets:PayPal     15.00 USD  spend
+  Assets:PayPal (spend) -> Assets:Bob (repayment to them)   15.00 USD
 ```
 
 This is translated to:
