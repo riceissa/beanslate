@@ -58,7 +58,7 @@ data RawAccountPart = RawAccountPart
 main :: IO ()
 main = do
   contents <- getContents
-  parseOrPrintError transaction contents
+  parseOrPrintError transaction show contents
 
 -- Modified from https://github.com/JakeWheat/intro_to_parsing/blob/a84aca1c172f201e5457cfa2f190cf98cd120d06/FunctionsAndTypesForParsing.lhs#L49-L51
 parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
@@ -68,17 +68,25 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
 putError :: ParseErrorBundle String Void -> IO ()
 putError e = putStr $ errorBundlePretty e
 
-parseOrPrintError :: Show a => Parser a -> String -> IO ()
-parseOrPrintError p input = case parseWithLeftOver p input of
-                                Right x -> pPrint x
+-- Test things out with:
+-- parseOrPrintErrorFromFile (transaction) (fromRight "" . fmap toBeancount) "ex.txt"
+
+parseOrPrintError :: Show a => Parser a -> (a -> String) -> String -> IO ()
+parseOrPrintError p f input = case parseWithLeftOver p input of
+                                Right x -> do
+                                            putStr "("
+                                            putStrLn $ f $ fst x
+                                            putStr ","
+                                            putStr $ snd x
+                                            putStrLn ")"
                                 Left e -> putError e
                                 -- Left e -> putStrLn $ show e
 
 -- Use like parseOrPrintErrorFromFile transaction "example.txt"
-parseOrPrintErrorFromFile :: Show a => Parser a -> FilePath -> IO ()
-parseOrPrintErrorFromFile p filename = do
-                                         input <- readFile filename
-                                         parseOrPrintError p input
+parseOrPrintErrorFromFile :: Show a => Parser a -> (a -> String) -> FilePath -> IO ()
+parseOrPrintErrorFromFile p f filename = do
+                                     input <- readFile filename
+                                     parseOrError p f input
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
@@ -245,6 +253,12 @@ validateSignedAccountParts saps =
                  (before, after) = splitAt insertIndex justs
              in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
+
+showTransactionAccountLine :: TransactionAccountLine -> String
+showTransactionAccountLine (TransactionAccountLine name amount sign) = "  " ++ name ++ " " ++ [sign] ++ amount ++ " USD"
+
+toBeancount :: Transaction -> String
+toBeancount (Transaction d nar tals) = show d ++ " \"" ++ nar ++ "\"\n" ++ unlines (map showTransactionAccountLine tals)
 
 date :: Parser Date
 date = do
