@@ -54,7 +54,9 @@ data TransactionAccountLine = TransactionAccountLine
     , talSign :: Char
     } deriving (Eq, Show)
 
--- A slightly more refined version of RawAccountPart, but less refined than a TransactionAccountLine. A sap MUST have a sign, but can have a missing amount.
+-- A slightly more refined version of RawAccountPart, but less refined
+-- than a TransactionAccountLine. A sap MUST have a sign, but can have
+-- a missing amount.
 data SignedAccountPart = SignedAccountPart
     { sapAccountName :: AccountName
     , sapCurrenciedAmount :: Maybe CurrenciedAmount
@@ -74,49 +76,54 @@ data RawAccountPart = RawAccountPart
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
-  | accountType == "Assets" = case keyword of
-                                "increase" -> Right '+'
-                                "decrease" -> Right '-'
-                                "opening balance" -> Right '+'
-                                "paid" -> Right '-'  -- e.g. Assets:PayPal
-                                "spend" -> Right '-'  -- e.g. Assets:PayPal
-                                "used" -> Right '-'  -- e.g. Assets:Cash
-                                "owed to me" -> Right '+'  -- e.g. Assets:Bob
-                                "owed to them" -> Right '-'  -- e.g. Assets:Bob
-                                "received" -> Right '+'  -- e.g. Assets:PayPal
-                                "receive" -> Right '+'  -- e.g. Assets:PayPal
-                                "repayment to me" -> Right '-'  -- e.g. Assets:Bob
-                                "repayment to them" -> Right '+'  -- e.g. Assets:Bob
-                                _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
-  | accountType == "Liabilities" = case keyword of
-                                    "increase" -> Right '-'
-                                    "decrease" -> Right '+'
-                                    "owed to me" -> Right '+'  -- e.g. Liabilities:Bob
-                                    "owed to them" -> Right '-'  -- e.g. Liabilities:Bob
-                                    "charge" -> Right '-'  -- e.g. Liabilities:CreditCard
-                                    "payment" -> Right '+'  -- e.g. Liabilities:CreditCard
-                                    "repayment to me" -> Right '-'  -- e.g. Liabilities:Bob
-                                    "repayment to them" -> Right '+'  -- e.g. Liabilities:Bob
-                                    _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
-  | accountType == "Equity" = case keyword of
-                                "increase" -> Right '-'
-                                "decrease" -> Right '+'
-                                "opening balance" -> Right '-'
-                                _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
-  | accountType == "Income" = case keyword of
-                                "increase" -> Right '-'
-                                "decrease" -> Right '+'
-                                "owed to me" -> Right '-'
-                                "earned" -> Right '-'  -- e.g. Income:Salary
-                                "income" -> Right '-'  -- e.g. Income:Salary
-                                _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
-  | accountType == "Expenses" = case keyword of
-                                    "increase" -> Right '+'
-                                    "decrease" -> Right '-'
-                                    "spent" -> Right '+'  -- e.g. Expenses:Groceries
-                                    "expense" -> Right '+'  -- e.g. Expenses:Groceries
-                                    "rebate" -> Right '-'
-                                    _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
+  | accountType == "Assets" =
+     case keyword of
+        "increase" -> Right '+'
+        "decrease" -> Right '-'
+        "opening balance" -> Right '+'
+        "paid" -> Right '-'  -- e.g. Assets:PayPal
+        "spend" -> Right '-'  -- e.g. Assets:PayPal
+        "used" -> Right '-'  -- e.g. Assets:Cash
+        "owed to me" -> Right '+'  -- e.g. Assets:Bob
+        "owed to them" -> Right '-'  -- e.g. Assets:Bob
+        "received" -> Right '+'  -- e.g. Assets:PayPal
+        "receive" -> Right '+'  -- e.g. Assets:PayPal
+        "repayment to me" -> Right '-'  -- e.g. Assets:Bob
+        "repayment to them" -> Right '+'  -- e.g. Assets:Bob
+        _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
+  | accountType == "Liabilities" =
+     case keyword of
+        "increase" -> Right '-'
+        "decrease" -> Right '+'
+        "owed to me" -> Right '+'  -- e.g. Liabilities:Bob
+        "owed to them" -> Right '-'  -- e.g. Liabilities:Bob
+        "charge" -> Right '-'  -- e.g. Liabilities:CreditCard
+        "payment" -> Right '+'  -- e.g. Liabilities:CreditCard
+        "repayment to me" -> Right '-'  -- e.g. Liabilities:Bob
+        "repayment to them" -> Right '+'  -- e.g. Liabilities:Bob
+        _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
+  | accountType == "Equity" =
+     case keyword of
+        "increase" -> Right '-'
+        "decrease" -> Right '+'
+        "opening balance" -> Right '-'
+        _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
+  | accountType == "Income" =
+     case keyword of
+        "increase" -> Right '-'
+        "decrease" -> Right '+'
+        "owed to me" -> Right '-'
+        "earned" -> Right '-'  -- e.g. Income:Salary
+        "income" -> Right '-'  -- e.g. Income:Salary
+        _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
+  | accountType == "Expenses" =
+     case keyword of
+        "increase" -> Right '+'
+        "decrease" -> Right '-'
+        "spent" -> Right '+'  -- e.g. Expenses:Groceries
+        "expense" -> Right '+'  -- e.g. Expenses:Groceries
+        "rebate" -> Right '-'
+        _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
   | otherwise = Left $ "Unknown account type: " ++ accountType
 
 figureOutAccountType name
@@ -201,7 +208,7 @@ arrow :: Parser String
 arrow = string "->" <|> string "<-"
 
 -- If the RawAccountPart has no keyword, then that's okay because we can maybe
--- infer it from an arrow. But if RawAccountPart has an incorrect keyword that
+-- infer it from an arrow. But if the RawAccountPart has an incorrect keyword that
 -- doesn't apply to this account type, or an account type that's not valid, then
 -- we want to propagate that error message forward.
 keywordSign :: RawAccountPart -> Either String (Maybe Char)
