@@ -7,26 +7,6 @@ import Text.Pretty.Simple (pPrint)
 
 type Parser = Parsec Void String
 
--- Modified from https://github.com/JakeWheat/intro_to_parsing/blob/a84aca1c172f201e5457cfa2f190cf98cd120d06/FunctionsAndTypesForParsing.lhs#L49-L51
-parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
-                        where
-                         leftOver = manyTill anySingle eof
-
-putError :: ParseErrorBundle String Void -> IO ()
-putError e = putStr $ errorBundlePretty e
-
-parseOrPrintError :: Show a => Parser a -> String -> IO ()
-parseOrPrintError p input = case parseWithLeftOver p input of
-                                Right x -> pPrint x
-                                Left e -> putError e
-                                -- Left e -> putStrLn $ show e
-
--- Use like parseOrPrintErrorFromFile transaction "example.txt"
-parseOrPrintErrorFromFile :: Show a => Parser a -> FilePath -> IO ()
-parseOrPrintErrorFromFile p filename = do
-                                         input <- readFile filename
-                                         parseOrPrintError p input
-
 data Date = Date
     { year :: Int
     , month :: Int
@@ -73,6 +53,31 @@ data RawAccountPart = RawAccountPart
     , rapKeywordSign :: Maybe Char
     , rapArrowSign :: Maybe Char
     } deriving (Eq, Show)
+
+main :: IO ()
+main = do
+  contents <- getContents
+  parseOrPrintError transaction contents
+
+-- Modified from https://github.com/JakeWheat/intro_to_parsing/blob/a84aca1c172f201e5457cfa2f190cf98cd120d06/FunctionsAndTypesForParsing.lhs#L49-L51
+parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
+                        where
+                         leftOver = manyTill anySingle eof
+
+putError :: ParseErrorBundle String Void -> IO ()
+putError e = putStr $ errorBundlePretty e
+
+parseOrPrintError :: Show a => Parser a -> String -> IO ()
+parseOrPrintError p input = case parseWithLeftOver p input of
+                                Right x -> pPrint x
+                                Left e -> putError e
+                                -- Left e -> putStrLn $ show e
+
+-- Use like parseOrPrintErrorFromFile transaction "example.txt"
+parseOrPrintErrorFromFile :: Show a => Parser a -> FilePath -> IO ()
+parseOrPrintErrorFromFile p filename = do
+                                         input <- readFile filename
+                                         parseOrPrintError p input
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
@@ -140,78 +145,6 @@ figureOutAccountType name
   | "Equity" `isPrefixOf` name = "Equity"
   | "Income" `isPrefixOf` name = "Income"
   | "Expenses" `isPrefixOf` name = "Expenses"
-
-date :: Parser Date
-date = do
-         y <- count 4 digitChar
-         _ <- char '-'
-         m <- count 2 digitChar
-         _ <- char '-'
-         d <- count 2 digitChar
-         return $ Date (read y) (read m) (read d)
-
-narration :: Parser String
-narration = do
-                _ <- char '"'
-                x <- many (satisfy (/= '"'))
-                _ <- char '"'
-                return x
-
-flagOrDirective :: Parser String
-flagOrDirective = string "*" <|> string "!" <|> string "txn"
-
-accountName :: Parser String
-accountName = do
-                accountType <- string "Assets" <|> string "Liabilities" <|> string "Income" <|> string "Expenses" <|> string "Equity"
-                rest <- many (letterChar <|> char ':')
-                return $ accountType ++ rest
-
-unsignedValue :: Parser String
-unsignedValue = do
-                    integerPart <- some digitChar
-                    decimalPart <- optional . try $ do
-                                            dot <- char '.'
-                                            ds <- some digitChar
-                                            return $ dot:ds
-                    return $ case decimalPart of
-                                Nothing -> integerPart
-                                Just v -> integerPart ++ v
-
--- Parse a Beancount currency, which is just a string of uppercase characters,
--- like "USD" or "EUR". (TODO: Beancount is slightly more flexible than this in
--- that it allows certain special characters in the currency symbol, so
--- eventually the code below should be changed to support exactly the currency
--- strings that Beancount supports.)
-currency :: Parser String
-currency = some upperChar
-
--- Parse an unsigned monetary amount like "12.50 USD".
-unsignedAmount :: Parser (Either String CurrenciedAmount)
-unsignedAmount = do
-                    n <- unsignedValue
-                    c <- optional . try $ some spaceChar *> currency
-                    return $ case c of
-                                Nothing -> Left "Amount was found, but no currency (e.g. USD) was found!"
-                                Just x -> Right $ CurrenciedAmount n x
-
-accountPart :: Parser (Either String RawAccountPart)
-accountPart = do
-                ac <- accountName
-                keyword <- optional . try $ do
-                                              _ <- some spaceChar
-                                              _ <- char '('
-                                              kw <- some (satisfy (/= ')'))
-                                              _ <- char ')'
-                                              return kw
-                am <- optional . try $ some spaceChar *> unsignedAmount
-                return $ case am of
-                            Nothing -> Right $ RawAccountPart ac keyword Nothing Nothing Nothing
-                            Just v -> do
-                                        am' <- v
-                                        Right $ RawAccountPart ac keyword (Just am') Nothing Nothing
-
-arrow :: Parser String
-arrow = string "->" <|> string "<-"
 
 -- If the RawAccountPart has no keyword, then that's okay because we can maybe
 -- infer it from an arrow. But if the RawAccountPart has an incorrect keyword that
@@ -312,6 +245,78 @@ validateSignedAccountParts saps =
              in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
 
+date :: Parser Date
+date = do
+         y <- count 4 digitChar
+         _ <- char '-'
+         m <- count 2 digitChar
+         _ <- char '-'
+         d <- count 2 digitChar
+         return $ Date (read y) (read m) (read d)
+
+narration :: Parser String
+narration = do
+                _ <- char '"'
+                x <- many (satisfy (/= '"'))
+                _ <- char '"'
+                return x
+
+flagOrDirective :: Parser String
+flagOrDirective = string "*" <|> string "!" <|> string "txn"
+
+accountName :: Parser String
+accountName = do
+                accountType <- string "Assets" <|> string "Liabilities" <|> string "Income" <|> string "Expenses" <|> string "Equity"
+                rest <- many (letterChar <|> char ':')
+                return $ accountType ++ rest
+
+unsignedValue :: Parser String
+unsignedValue = do
+                    integerPart <- some digitChar
+                    decimalPart <- optional . try $ do
+                                            dot <- char '.'
+                                            ds <- some digitChar
+                                            return $ dot:ds
+                    return $ case decimalPart of
+                                Nothing -> integerPart
+                                Just v -> integerPart ++ v
+
+-- Parse a Beancount currency, which is just a string of uppercase characters,
+-- like "USD" or "EUR". (TODO: Beancount is slightly more flexible than this in
+-- that it allows certain special characters in the currency symbol, so
+-- eventually the code below should be changed to support exactly the currency
+-- strings that Beancount supports.)
+currency :: Parser String
+currency = some upperChar
+
+-- Parse an unsigned monetary amount like "12.50 USD".
+unsignedAmount :: Parser (Either String CurrenciedAmount)
+unsignedAmount = do
+                    n <- unsignedValue
+                    c <- optional . try $ some spaceChar *> currency
+                    return $ case c of
+                                Nothing -> Left "Amount was found, but no currency (e.g. USD) was found!"
+                                Just x -> Right $ CurrenciedAmount n x
+
+accountPart :: Parser (Either String RawAccountPart)
+accountPart = do
+                ac <- accountName
+                keyword <- optional . try $ do
+                                              _ <- some spaceChar
+                                              _ <- char '('
+                                              kw <- some (satisfy (/= ')'))
+                                              _ <- char ')'
+                                              return kw
+                am <- optional . try $ some spaceChar *> unsignedAmount
+                return $ case am of
+                            Nothing -> Right $ RawAccountPart ac keyword Nothing Nothing Nothing
+                            Just v -> do
+                                        am' <- v
+                                        Right $ RawAccountPart ac keyword (Just am') Nothing Nothing
+
+arrow :: Parser String
+arrow = string "->" <|> string "<-"
+
 transaction :: Parser (Either String Transaction)
 transaction = do
                 d <- date
@@ -343,7 +348,3 @@ transaction = do
                                         _ -> traverse rapToSap raps
                             tals <- validateSignedAccountParts saps
                             Right $ Transaction d nar tals
-
-main = do
-  contents <- getContents
-  parseOrPrintError transaction contents
