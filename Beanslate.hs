@@ -90,6 +90,8 @@ keywordToSign accountType keyword
         "receive" -> Right '+'  -- e.g. Assets:PayPal
         "repayment to me" -> Right '-'  -- e.g. Assets:Bob
         "repayment to them" -> Right '+'  -- e.g. Assets:Bob
+        "withdrawal" -> Right '-'  -- e.g. Assets:Bank
+        "deposit" -> Right '+'  -- e.g. Assets:Bank
         _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
   | accountType == "Liabilities" =
      case keyword of
@@ -115,6 +117,7 @@ keywordToSign accountType keyword
         "owed to me" -> Right '-'
         "earned" -> Right '-'  -- e.g. Income:Salary
         "income" -> Right '-'  -- e.g. Income:Salary
+        "charge" -> Right '+'
         _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
   | accountType == "Expenses" =
      case keyword of
@@ -323,7 +326,12 @@ transaction = do
                             al1 <- sequence acclines1
                             al2 <- sequence acclines2
                             raps <- withBothSigns al1 arr al2
-                            saps <- traverse rapToSap raps
+                            saps <- case length raps of
+                                        0 -> Left "No account parts were found!"
+                                        1 -> Left ("Only one account part was found! In a double-entry "
+                                                   ++ "bookkeeping system, at least two accounts must "
+                                                   ++ "be involved in any transaction.")
+                                        _ -> traverse rapToSap raps
                             tals <- validateSignedAccountParts saps
                             Right $ Transaction d nar tals
 
