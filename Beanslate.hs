@@ -240,22 +240,23 @@ withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
                                         where
                                             (xs1, xs2) = withArrowSign acclines1 arr acclines2
 
--- This does a local check of each RawAccountPart -- if it has no sign or mismatching signs, then we raise an error.
+-- This does a local check of each RawAccountPart -- if it has no sign or
+-- mismatching signs, then we raise an error.
+-- It's ok for the input to have a sign but no amount (since the amount can
+-- possibly be filled in using the other amounts in the transaction -- see
+-- validateSignedAccountParts), but it's not okay for the input to have an amount
+-- without a sign (because we should have inserted any missing signs already,
+-- so that means not enough sign information was provided in the transaction).
 rapToSap :: RawAccountPart -> Either String SignedAccountPart
 rapToSap (RawAccountPart name _ ca (Just kwSign) (Just arrSign))
   | kwSign == arrSign = Right $ SignedAccountPart name ca kwSign
-  | otherwise = Left ("In account part " ++ name ++ " the keyword sign is " ++ [kwSign] ++ " but the arrow sign is " ++ [arrSign])
+  | otherwise = Left ("In account part " ++ name ++ " the keyword sign is " ++
+                      [kwSign] ++ " but the arrow sign is " ++ [arrSign])
 rapToSap (RawAccountPart name _ ca (Just kwSign) _) = Right $ SignedAccountPart name ca kwSign
 rapToSap (RawAccountPart name _ ca _ (Just arrSign)) = Right $ SignedAccountPart name ca arrSign
-rapToSap (RawAccountPart name _ _ _ _) = Left ("The account part " ++ name ++ " is missing a sign (no keyword sign or arrow sign has been provided)!")
+rapToSap (RawAccountPart name _ _ _ _) = Left ("The account part " ++ name ++
+                                               " is missing a sign (no keyword sign or arrow sign has been provided)!")
 
--- Assume that validateRawAccountPartSign has already been run, so canonically
--- use the keyword sign as the sign.
--- It's ok for the input to have a sign but no amount (since the amount can
--- possibly be filled in using the other amounts in the transaction -- see
--- validateRawAccountParts), but it's not okay for the input to have an amount
--- without a sign (because we should have inserted any missing signs already,
--- so that means not enough sign information was provided in the transaction).
 signedAmount :: SignedAccountPart -> Maybe Float
 signedAmount (SignedAccountPart _ (Just ca) '+') = Just (read $ caAmount ca :: Float)
 signedAmount (SignedAccountPart _ (Just ca) '-') = Just (read $ '-' : caAmount ca :: Float)
@@ -264,20 +265,17 @@ signedAmount _ = Nothing
 hasAmount :: SignedAccountPart -> Bool
 hasAmount = isJust . sapCurrenciedAmount
 
--- Make sure the keyword-inferred sign is the same as the arrow-inferred sign
--- validateRawAccountPartSign :: RawAccountPart -> Either String RawAccountPart
-
 sapToTal :: SignedAccountPart -> Either String TransactionAccountLine
 sapToTal (SignedAccountPart name (Just ca) sign) = Right $ TransactionAccountLine name (caAmount ca) sign
 sapToTal (SignedAccountPart name Nothing _) = Left ("In account part " ++ name ++ " no currencied amount has been given!")
 
 -- Make sure at most one currencied amount is missing, and if it is missing,
--- fill it in by calculating what it must be using the other amounts
---
--- ok so... having a single missing amount (but everything that DOES have
---              an amount has a sign) -> ok
---          having all amounts and signs, but not adding up to zero -> not ok
---          having all amounts and signs adding up to zero -> ok
+-- fill it in by calculating what it must be using the other amounts.
+-- * Having all amounts and signs and adding up to zero -> ok
+-- * Having all amounts and signs, but not adding up to zero -> not ok
+-- * Having a single missing amount (but everything that DOES have
+--   an amount has a sign) -> ok
+-- * Having more than one missing amount -> not ok
 validateSignedAccountParts :: [SignedAccountPart] -> Either String [TransactionAccountLine]
 validateSignedAccountParts saps =
     let justs = filter hasAmount saps
@@ -323,6 +321,5 @@ transaction = do
                             al2 <- sequence acclines2
                             raps <- withBothSigns al1 arr al2
                             saps <- traverse rapToSap raps
-                            -- raps' <- sequence $ map validateRawAccountPartSign raps
                             v <- validateSignedAccountParts saps
                             Right $ Transaction d nar v
