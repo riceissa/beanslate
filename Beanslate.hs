@@ -1,11 +1,8 @@
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Control.Monad
 import Data.Void (Void)
 import Data.List (isPrefixOf)
-import Data.Maybe (isJust, fromJust)
-import Data.Either (fromRight)
-import System.IO
+import Data.Maybe (isJust, mapMaybe)
 import Text.Pretty.Simple (pPrint)
 
 type Parser = Parsec Void String
@@ -286,7 +283,7 @@ validateSignedAccountParts :: [SignedAccountPart] -> Either String [TransactionA
 validateSignedAccountParts saps =
     let justs = filter hasAmount saps
         nothings = filter (not . hasAmount) saps
-        sumOfJusts = sum (map (fromJust . signedAmount) justs) :: Float
+        sumOfJusts = sum $ mapMaybe signedAmount saps :: Float
     in case length nothings of
         0 -> if abs sumOfJusts < 0.0001
                 then traverse sapToTal justs
