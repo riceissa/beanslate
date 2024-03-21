@@ -282,6 +282,8 @@ sapToTal (SignedAccountPart name Nothing _) = Left ("In account part " ++ name +
 -- * Having a single missing amount (but everything that DOES have
 --   an amount has a sign) -> ok
 -- * Having more than one missing amount -> not ok
+-- * Having one missing amount, but the missing amount has an explicit
+--   sign and that sign is different from the calculated sign -> not ok  (TODO: this needs to be implemented)
 validateSignedAccountParts :: [SignedAccountPart] -> Either String [TransactionAccountLine]
 validateSignedAccountParts saps =
     let justs = filter hasAmount saps
