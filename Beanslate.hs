@@ -140,7 +140,7 @@ narration = do
                 _ <- char '"'
                 x <- many (satisfy (/= '"'))
                 _ <- char '"'
-                return $ x
+                return x
 
 flagOrDirective :: Parser String
 flagOrDirective = string "*" <|> string "!" <|> string "txn"
@@ -157,7 +157,7 @@ unsignedValue = do
                     decimalPart <- optional . try $ do
                                             dot <- char '.'
                                             ds <- some digitChar
-                                            return $ [dot] ++ ds
+                                            return $ dot:ds
                     return $ case decimalPart of
                                 Nothing -> integerPart
                                 Just v -> integerPart ++ v
@@ -250,8 +250,8 @@ rapToSap (RawAccountPart name _ _ _ _) = Left ("The account part " ++ name ++ " 
 -- without a sign (because we should have inserted any missing signs already,
 -- so that means not enough sign information was provided in the transaction).
 signedAmount :: SignedAccountPart -> Maybe Float
-signedAmount (SignedAccountPart _ (Just ca) '+') = Just $ (read $ caAmount ca :: Float)
-signedAmount (SignedAccountPart _ (Just ca) '-') = Just $ (read $ '-':(caAmount ca) :: Float)
+signedAmount (SignedAccountPart _ (Just ca) '+') = Just (read $ caAmount ca :: Float)
+signedAmount (SignedAccountPart _ (Just ca) '-') = Just (read $ '-' : caAmount ca :: Float)
 signedAmount _ = Nothing
 
 hasAmount :: SignedAccountPart -> Bool
@@ -277,7 +277,7 @@ validateSignedAccountParts saps =
         nothings = filter (not . hasAmount) saps
         sumOfJusts = sum (map (fromJust . signedAmount) justs) :: Float
     in case length nothings of
-        0 -> if abs (sumOfJusts) < 0.0001
+        0 -> if abs sumOfJusts < 0.0001
                 then traverse sapToTal justs
                 else Left "All amounts have been provided but don't sum to ~zero!"
         1 -> let insertIndex = length $ takeWhile hasAmount saps
@@ -289,7 +289,7 @@ validateSignedAccountParts saps =
                                                 (show missingValue) "USD")
                                             (sapSign missingSap))
                  (before, after) = splitAt insertIndex justs
-             in pure (\x y z -> x ++ y ++ z) <*> (traverse sapToTal before) <*> sequence [missingTal] <*> (traverse sapToTal after)
+             in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
 
 transaction :: Parser (Either String Transaction)
