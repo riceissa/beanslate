@@ -329,3 +329,7 @@ transaction = do
                             saps <- traverse rapToSap raps
                             tals <- validateSignedAccountParts saps
                             Right $ Transaction d nar tals
+
+main = do
+  contents <- getContents
+  parseOrPrintError transaction contents
