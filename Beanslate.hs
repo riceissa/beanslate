@@ -6,6 +6,7 @@ import Data.List (isPrefixOf)
 import Data.Maybe (isJust, fromJust)
 import Data.Either (fromRight)
 import System.IO
+import Text.Pretty.Simple (pPrint)
 
 type Parser = Parsec Void String
 
@@ -19,7 +20,7 @@ putError e = putStr $ errorBundlePretty e
 
 parseOrPrintError :: Show a => Parser a -> String -> IO ()
 parseOrPrintError p input = case parseWithLeftOver p input of
-                                Right x -> print x
+                                Right x -> pPrint x
                                 Left e -> putError e
                                 -- Left e -> putStrLn $ show e
 
