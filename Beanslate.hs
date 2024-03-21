@@ -58,7 +58,7 @@ data RawAccountPart = RawAccountPart
 main :: IO ()
 main = do
   contents <- getContents
-  parseOrPrintError transaction show contents
+  parseOrPrintError transaction id contents
 
 -- Modified from https://github.com/JakeWheat/intro_to_parsing/blob/a84aca1c172f201e5457cfa2f190cf98cd120d06/FunctionsAndTypesForParsing.lhs#L49-L51
 parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
@@ -71,11 +71,11 @@ putError e = putStr $ errorBundlePretty e
 -- Test things out with:
 -- parseOrPrintErrorFromFile (transaction) (fromRight "" . fmap toBeancount) "ex.txt"
 
-parseOrPrintError :: Show a => Parser a -> (a -> String) -> String -> IO ()
+parseOrPrintError :: (Show a, Show b) => Parser a -> (a -> b) -> String -> IO ()
 parseOrPrintError p f input = case parseWithLeftOver p input of
                                 Right x -> do
                                             putStr "("
-                                            putStrLn $ f $ fst x
+                                            pPrint $ f $ fst x
                                             putStr ","
                                             putStr $ snd x
                                             putStrLn ")"
@@ -83,10 +83,10 @@ parseOrPrintError p f input = case parseWithLeftOver p input of
                                 -- Left e -> putStrLn $ show e
 
 -- Use like parseOrPrintErrorFromFile transaction "example.txt"
-parseOrPrintErrorFromFile :: Show a => Parser a -> (a -> String) -> FilePath -> IO ()
+parseOrPrintErrorFromFile :: (Show a, Show b) => Parser a -> (a -> b) -> FilePath -> IO ()
 parseOrPrintErrorFromFile p f filename = do
                                      input <- readFile filename
-                                     parseOrError p f input
+                                     parseOrPrintError p f input
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
