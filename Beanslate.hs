@@ -203,9 +203,7 @@ accountPart = do
                                               kw <- some (satisfy (/= ')'))
                                               _ <- char ')'
                                               return kw
-                am <- optional . try $ do
-                                         _ <- some spaceChar
-                                         unsignedAmount
+                am <- optional . try $ some spaceChar *> unsignedAmount
                 return $ case am of
                             Nothing -> Right $ RawAccountPart ac keyword Nothing Nothing Nothing
                             Just v -> do
