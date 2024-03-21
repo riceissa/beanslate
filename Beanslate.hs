@@ -17,12 +17,14 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
 putError :: ParseErrorBundle String Void -> IO ()
 putError e = putStr $ errorBundlePretty e
 
+parseOrPrintError :: Show a => Parser a -> String -> IO ()
 parseOrPrintError p input = case parseWithLeftOver p input of
                                 Right x -> print x
                                 Left e -> putError e
                                 -- Left e -> putStrLn $ show e
 
 -- Use like parseOrPrintErrorFromFile transaction "example.txt"
+parseOrPrintErrorFromFile :: Show a => Parser a -> FilePath -> IO ()
 parseOrPrintErrorFromFile p filename = do
                                          input <- readFile filename
                                          parseOrPrintError p input
@@ -126,6 +128,11 @@ keywordToSign accountType keyword
         _ -> Left $ "The transaction keyword " ++ keyword ++ " is not supported for the account type " ++ accountType
   | otherwise = Left $ "Unknown account type: " ++ accountType
 
+-- TODO: output for this function should be Maybe String or Either String String
+-- so that errors can be propagated. It's not a big deal since the parser accountName
+-- only allows valid account types, but catching it here will make this function more
+-- flexible, in case we want to use it for anything else.
+figureOutAccountType :: String -> String
 figureOutAccountType name
   | "Assets" `isPrefixOf` name = "Assets"
   | "Liabilities" `isPrefixOf` name = "Liabilities"
