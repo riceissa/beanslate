@@ -283,7 +283,7 @@ sapToTal (SignedAccountPart name Nothing _) = Left ("In account part " ++ name +
 --   an amount has a sign) -> ok
 -- * Having more than one missing amount -> not ok
 -- * Having one missing amount, but the missing amount has an explicit
---   sign and that sign is different from the calculated sign -> not ok  (TODO: this needs to be implemented)
+--   sign and that sign is different from the calculated sign -> not ok
 validateSignedAccountParts :: [SignedAccountPart] -> Either String [TransactionAccountLine]
 validateSignedAccountParts saps =
     let justs = filter hasAmount saps
@@ -296,11 +296,18 @@ validateSignedAccountParts saps =
         1 -> let insertIndex = length $ takeWhile hasAmount saps
                  missingValue = abs sumOfJusts
                  missingSap = head nothings
-                 missingTal = sapToTal (SignedAccountPart
-                                            (sapAccountName missingSap)
-                                            (Just $ CurrenciedAmount
-                                                (show missingValue) "USD")
-                                            (sapSign missingSap))
+                 missingSign = if missingValue >= 0 then '+' else '-'
+                 missingTal = if sapSign missingSap == missingSign
+                                then sapToTal (SignedAccountPart
+                                                (sapAccountName missingSap)
+                                                (Just $ CurrenciedAmount
+                                                    (show missingValue) "USD")
+                                                (sapSign missingSap))
+                                else Left ("An explicit sign was given for "
+                                           ++ sapAccountName missingSap ++
+                                           " but this sign does not match the " ++
+                                           "(implicit, calculated) sign from the " ++
+                                           "other amounts!")
                  (before, after) = splitAt insertIndex justs
              in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
