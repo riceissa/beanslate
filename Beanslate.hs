@@ -229,18 +229,18 @@ validateSignedAccountParts saps =
         1 -> let insertIndex = length $ takeWhile hasAmount saps
                  missingValue = abs sumOfJusts
                  missingSap = head nothings
-                 missingSign = if missingValue >= 0 then '+' else '-'
+                 missingSign = if (-sumOfJusts) >= 0 then '+' else '-'
                  missingTal = if sapSign missingSap == missingSign
                                 then sapToTal (SignedAccountPart
                                                 (sapAccountName missingSap)
                                                 (Just $ CurrenciedAmount
                                                     (show missingValue) "USD")
                                                 (sapSign missingSap))
-                                else Left ("An explicit sign was given for "
+                                else Left ("An explicit sign (" ++ [sapSign missingSap] ++ ") was given for "
                                            ++ sapAccountName missingSap ++
                                            " but this sign does not match the " ++
-                                           "(implicit, calculated) sign from the " ++
-                                           "other amounts!")
+                                           "(implicit, calculated) sign (" ++ [missingSign] ++ ") from the " ++
+                                           "other amounts!" ++ show missingValue)
                  (before, after) = splitAt insertIndex justs
              in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
@@ -332,6 +332,7 @@ transaction = do
                                         ar <- arrow
                                         acclines2 <- some (try $ some spaceChar *> accountPart)
                                         return (ar, acclines2)
+                -- _ <- some spaceChar
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
