@@ -42,16 +42,23 @@ type AccountName = String
 
 type TransactionKeyword = String
 
+data Transaction = Transaction
+    { txnDate :: Date
+    , txnNarration :: String
+    , txnAccountLines :: [TransactionAccountLine]
+    } deriving (Eq, Show)
+
 data TransactionAccountLine = TransactionAccountLine
     { talAccountName :: AccountName
     , talAmount :: String  -- TODO: this should be CurrenciedAmount
     , talSign :: Char
     } deriving (Eq, Show)
 
-data Transaction = Transaction
-    { txnDate :: Date
-    , txnNarration :: String
-    , txnAccountLines :: [TransactionAccountLine]
+-- A slightly more refined version of RawAccountPart, but less refined than a TransactionAccountLine. A sap MUST have a sign, but can have a missing amount.
+data SignedAccountPart = SignedAccountPart
+    { sapAccountName :: AccountName
+    , sapCurrenciedAmount :: Maybe CurrenciedAmount
+    , sapSign :: Char
     } deriving (Eq, Show)
 
 -- This represents a TransactionAccountLine with possibly missing parts.
@@ -226,53 +233,63 @@ withBothSigns acclines1 arr acclines2 = withKeywordSign (xs1 ++ xs2)
                                         where
                                             (xs1, xs2) = withArrowSign acclines1 arr acclines2
 
+-- This does a local check of each RawAccountPart -- if it has no sign or mismatching signs, then we raise an error.
+rapToSap :: RawAccountPart -> Either String SignedAccountPart
+rapToSap (RawAccountPart name _ ca (Just kwSign) (Just arrSign))
+  | kwSign == arrSign = Right $ SignedAccountPart name ca kwSign
+  | otherwise = Left ("In account part " ++ name ++ " the keyword sign is " ++ [kwSign] ++ " but the arrow sign is " ++ [arrSign])
+rapToSap (RawAccountPart name _ ca (Just kwSign) _) = Right $ SignedAccountPart name ca kwSign
+rapToSap (RawAccountPart name _ ca _ (Just arrSign)) = Right $ SignedAccountPart name ca arrSign
+rapToSap (RawAccountPart name _ _ _ _) = Left ("The account part " ++ name ++ " is missing a sign (no keyword sign or arrow sign has been provided)!")
+
 -- Assume that validateRawAccountPartSign has already been run, so canonically
 -- use the keyword sign as the sign.
-signedAmount :: RawAccountPart -> Maybe Float
-signedAmount (RawAccountPart _ _ (Just ca) (Just '+') _) = Just $ (read $ caAmount ca :: Float)
-signedAmount (RawAccountPart _ _ (Just ca) (Just '-') _) = Just $ (read $ '-':(caAmount ca) :: Float)
--- signedAmount (RawAccountPart _ _ Nothing _ _) = Nothing
+-- It's ok for the input to have a sign but no amount (since the amount can
+-- possibly be filled in using the other amounts in the transaction -- see
+-- validateRawAccountParts), but it's not okay for the input to have an amount
+-- without a sign (because we should have inserted any missing signs already,
+-- so that means not enough sign information was provided in the transaction).
+signedAmount :: SignedAccountPart -> Maybe Float
+signedAmount (SignedAccountPart _ (Just ca) '+') = Just $ (read $ caAmount ca :: Float)
+signedAmount (SignedAccountPart _ (Just ca) '-') = Just $ (read $ '-':(caAmount ca) :: Float)
 signedAmount _ = Nothing
 
-hasAmount :: RawAccountPart -> Bool
-hasAmount = isJust . signedAmount
+hasAmount :: SignedAccountPart -> Bool
+hasAmount = isJust . sapCurrenciedAmount
 
 -- Make sure the keyword-inferred sign is the same as the arrow-inferred sign
 -- validateRawAccountPartSign :: RawAccountPart -> Either String RawAccountPart
 
--- Assuming a filled in RawAccountPart, convert it to TransactionAccountLine
-rapToTal :: RawAccountPart -> Either String TransactionAccountLine
-rapToTal (RawAccountPart name tkw Nothing _ _) = Left "No currencied amount has been given!"
-rapToTal (RawAccountPart name tkw (Just ca) (Just kwSign) (Just arrSign))
-  | kwSign == arrSign = Right $ TransactionAccountLine name (caAmount ca) kwSign
-  | otherwise = Left ("In account part " ++ name ++ " the keyword sign is " ++ [kwSign] ++ " but the arrow sign is " ++ [arrSign])
-rapToTal (RawAccountPart name tkw (Just ca) (Just kwSign) _) = Right $ TransactionAccountLine name (caAmount ca) kwSign
-rapToTal (RawAccountPart name tkw (Just ca) _ (Just arrSign)) = Right $ TransactionAccountLine name (caAmount ca) arrSign
-rapToTal (RawAccountPart name _ _ _ _) = Left ("In account part " ++ name ++ " cannot figure out sign (no keyword sign or arrow sign has been provided)!")
+sapToTal :: SignedAccountPart -> Either String TransactionAccountLine
+sapToTal (SignedAccountPart name (Just ca) sign) = Right $ TransactionAccountLine name (caAmount ca) sign
+sapToTal (SignedAccountPart name Nothing _) = Left ("In account part " ++ name ++ " no currencied amount has been given!")
 
 -- Make sure at most one currencied amount is missing, and if it is missing,
 -- fill it in by calculating what it must be using the other amounts
-validateRawAccountParts :: [RawAccountPart] -> Either String [TransactionAccountLine]
-validateRawAccountParts raps =
-    let justs = filter hasAmount raps
-        nothings = filter (not . hasAmount) raps
+--
+-- ok so... having a single missing amount (but everything that DOES have
+--              an amount has a sign) -> ok
+--          having all amounts and signs, but not adding up to zero -> not ok
+--          having all amounts and signs adding up to zero -> ok
+validateSignedAccountParts :: [SignedAccountPart] -> Either String [TransactionAccountLine]
+validateSignedAccountParts saps =
+    let justs = filter hasAmount saps
+        nothings = filter (not . hasAmount) saps
         sumOfJusts = sum (map (fromJust . signedAmount) justs) :: Float
-        insertIndex = length $ takeWhile hasAmount raps
     in case length nothings of
         0 -> if abs (sumOfJusts) < 0.0001
-                then traverse rapToTal justs
+                then traverse sapToTal justs
                 else Left "All amounts have been provided but don't sum to ~zero!"
-        1 -> let missingValue = abs sumOfJusts
-                 missingRap = head nothings
-                 missingTal = rapToTal (RawAccountPart
-                                            (rapAccountName missingRap)
-                                            Nothing
+        1 -> let insertIndex = length $ takeWhile hasAmount saps
+                 missingValue = abs sumOfJusts
+                 missingSap = head nothings
+                 missingTal = sapToTal (SignedAccountPart
+                                            (sapAccountName missingSap)
                                             (Just $ CurrenciedAmount
                                                 (show missingValue) "USD")
-                                            (rapKeywordSign missingRap)
-                                            (rapArrowSign missingRap))
+                                            (sapSign missingSap))
                  (before, after) = splitAt insertIndex justs
-             in pure (\x y z -> x ++ y ++ z) <*> (traverse rapToTal before) <*> sequence [missingTal] <*> (traverse rapToTal after)
+             in pure (\x y z -> x ++ y ++ z) <*> (traverse sapToTal before) <*> sequence [missingTal] <*> (traverse sapToTal after)
         _ -> Left "More than one missing amount found!"
 
 transaction :: Parser (Either String Transaction)
@@ -298,6 +315,7 @@ transaction = do
                             al1 <- sequence acclines1
                             al2 <- sequence acclines2
                             raps <- withBothSigns al1 arr al2
+                            saps <- traverse rapToSap raps
                             -- raps' <- sequence $ map validateRawAccountPartSign raps
-                            v <- validateRawAccountParts raps
+                            v <- validateSignedAccountParts saps
                             Right $ Transaction d nar v
