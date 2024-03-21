@@ -4,6 +4,7 @@ import Data.Void (Void)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust, mapMaybe)
 import Text.Pretty.Simple (pPrint)
+import Control.Monad (void)
 
 type Parser = Parsec Void String
 
@@ -293,9 +294,9 @@ currency = some upperChar
 unsignedAmount :: Parser (Either String CurrenciedAmount)
 unsignedAmount = do
                     n <- unsignedValue
-                    c <- optional . try $ some spaceChar *> currency
+                    c <- optional . try $ some (char ' ') *> currency
                     return $ case c of
-                                Nothing -> Left "Amount was found, but no currency (e.g. USD) was found!"
+                                Nothing -> Left $ "Amount of " ++ n ++" was found, but no currency (e.g. USD) was found!"
                                 Just x -> Right $ CurrenciedAmount n x
 
 accountPart :: Parser (Either String RawAccountPart)
@@ -332,7 +333,7 @@ transaction = do
                                         ar <- arrow
                                         acclines2 <- some (try $ some spaceChar *> accountPart)
                                         return (ar, acclines2)
-                -- _ <- some spaceChar
+                _ <- void (some spaceChar) <|> eof
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
