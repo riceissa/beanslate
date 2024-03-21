@@ -321,5 +321,5 @@ transaction = do
                             al2 <- sequence acclines2
                             raps <- withBothSigns al1 arr al2
                             saps <- traverse rapToSap raps
-                            v <- validateSignedAccountParts saps
-                            Right $ Transaction d nar v
+                            tals <- validateSignedAccountParts saps
+                            Right $ Transaction d nar tals
