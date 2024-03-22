@@ -5,6 +5,7 @@ import Data.List (isPrefixOf)
 import Data.Maybe (isJust, mapMaybe)
 import Text.Pretty.Simple (pPrint)
 import Control.Monad (void)
+import Text.Printf (printf)
 
 type Parser = Parsec Void String
 
@@ -74,7 +75,7 @@ putError e = putStr $ errorBundlePretty e
 parseOrPrintError :: (Show a, Show b) => Parser a -> (a -> b) -> String -> IO ()
 parseOrPrintError p f input = case parseWithLeftOver p input of
                                 Right x -> do
-                                            putStr "("
+                                            putStrLn "("
                                             pPrint $ f $ fst x
                                             putStr ","
                                             putStr $ snd x
@@ -254,11 +255,16 @@ validateSignedAccountParts saps =
              in (\x y z -> x ++ y ++ z) <$> traverse sapToTal before <*> sequence [missingTal] <*> traverse sapToTal after
         _ -> Left "More than one missing amount found!"
 
-showTransactionAccountLine :: TransactionAccountLine -> String
-showTransactionAccountLine (TransactionAccountLine name amount sign) = "  " ++ name ++ " " ++ [sign] ++ amount ++ " USD"
+showTransactionAccountLine :: Int -> TransactionAccountLine -> String
+showTransactionAccountLine padding (TransactionAccountLine name amount sign) = "  " ++ name ++ replicate (padding - length name + 2) ' ' ++ [sign] ++ amount ++ " USD"
+
+showDate :: Date -> String
+showDate (Date y m d) = show y ++ "-" ++ printf "%02d" m ++ "-" ++ printf "%02d" d
 
 toBeancount :: Transaction -> String
-toBeancount (Transaction d nar tals) = show d ++ " \"" ++ nar ++ "\"\n" ++ unlines (map showTransactionAccountLine tals)
+toBeancount (Transaction d nar tals) = showDate d ++ " * \"" ++ nar ++ "\"\n" ++ unlines (map (showTransactionAccountLine longestAccountLength) tals)
+                                        where
+                                            longestAccountLength = maximum (map (length . talAccountName) tals)
 
 date :: Parser Date
 date = do
