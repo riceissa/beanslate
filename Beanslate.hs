@@ -6,6 +6,7 @@ import Data.Maybe (isJust, mapMaybe)
 import Text.Pretty.Simple (pPrint)
 import Control.Monad (void)
 import Text.Printf (printf)
+import Data.Either (fromRight)
 
 type Parser = Parsec Void String
 
@@ -59,7 +60,12 @@ data RawAccountPart = RawAccountPart
 main :: IO ()
 main = do
   contents <- getContents
-  parseOrPrintError transaction id contents
+  let txns = parse transaction "<stdin>" contents
+  case txns of
+    Left e -> putError e
+    Right x -> case x of
+                Left e' -> putStrLn e'
+                Right t -> putStr $ toBeancount t
 
 -- Modified from https://github.com/JakeWheat/intro_to_parsing/blob/a84aca1c172f201e5457cfa2f190cf98cd120d06/FunctionsAndTypesForParsing.lhs#L49-L51
 parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
@@ -68,9 +74,6 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
 
 putError :: ParseErrorBundle String Void -> IO ()
 putError e = putStr $ errorBundlePretty e
-
--- Test things out with:
--- parseOrPrintErrorFromFile (transaction) (fromRight "" . fmap toBeancount) "ex.txt"
 
 parseOrPrintError :: (Show a, Show b) => Parser a -> (a -> b) -> String -> IO ()
 parseOrPrintError p f input = case parseWithLeftOver p input of
@@ -88,6 +91,9 @@ parseOrPrintErrorFromFile :: (Show a, Show b) => Parser a -> (a -> b) -> FilePat
 parseOrPrintErrorFromFile p f filename = do
                                      input <- readFile filename
                                      parseOrPrintError p f input
+
+debugParseTransactionFromFile :: FilePath -> IO ()
+debugParseTransactionFromFile = parseOrPrintErrorFromFile transaction (fromRight "" . fmap toBeancount)
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
@@ -276,11 +282,7 @@ date = do
          return $ Date (read y) (read m) (read d)
 
 narration :: Parser String
-narration = do
-                _ <- char '"'
-                x <- many (satisfy (/= '"'))
-                _ <- char '"'
-                return x
+narration = char '"' *>  many (satisfy (/= '"')) <* char '"'
 
 flagOrDirective :: Parser String
 flagOrDirective = string "*" <|> string "!" <|> string "txn"
