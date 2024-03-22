@@ -93,7 +93,7 @@ parseOrPrintErrorFromFile p f filename = do
                                      parseOrPrintError p f input
 
 debugParseTransactionFromFile :: FilePath -> IO ()
-debugParseTransactionFromFile = parseOrPrintErrorFromFile transaction (fromRight "" . fmap toBeancount)
+debugParseTransactionFromFile = parseOrPrintErrorFromFile transaction (either (const "") toBeancount)
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
