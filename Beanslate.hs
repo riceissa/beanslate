@@ -122,7 +122,7 @@ parseOrPrintErrorFromFile p f filename = do
                                      parseOrPrintError p f input
 
 debugParseTransactionFromFile :: FilePath -> IO ()
-debugParseTransactionFromFile = parseOrPrintErrorFromFile transaction (either (const "") toBeancount)
+debugParseTransactionFromFile = parseOrPrintErrorFromFile transaction (either (("Left encountered: " ++) . show) toBeancount)
 
 keywordToSign :: String -> String -> Either String Char
 keywordToSign accountType keyword
