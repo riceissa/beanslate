@@ -311,19 +311,19 @@ date = label "date" $ do
          return $ Date (read y) (read m) (read d)
 
 narration :: Parser String
-narration = char '"' *>  many (satisfy (/= '"')) <* char '"'
+narration = label "narration" $ char '"' *>  many (satisfy (/= '"')) <* char '"'
 
 flagOrDirective :: Parser String
-flagOrDirective = string "*" <|> string "!" <|> string "txn"
+flagOrDirective = label "flag/directive" $ string "*" <|> string "!" <|> string "txn"
 
 accountName :: Parser String
-accountName = do
+accountName = label "account name" $ do
                 accountType <- string "Assets" <|> string "Liabilities" <|> string "Income" <|> string "Expenses" <|> string "Equity"
                 rest <- many (letterChar <|> char ':')
                 return $ accountType ++ rest
 
 unsignedValue :: Parser String
-unsignedValue = do
+unsignedValue = label "unsigned value" $ do
                     integerPart <- some digitChar
                     decimalPart <- optional . try $ do
                                             dot <- char '.'
@@ -339,11 +339,11 @@ unsignedValue = do
 -- eventually the code below should be changed to support exactly the currency
 -- strings that Beancount supports.)
 currency :: Parser String
-currency = some upperChar
+currency = label "currency" $ some upperChar
 
 -- Parse an unsigned monetary amount like "12.50 USD".
 unsignedAmount :: Parser (Either String CurrenciedAmount)
-unsignedAmount = do
+unsignedAmount = label "unsigned amount" $ do
                     n <- unsignedValue
                     c <- optional . try $ some (char ' ') *> currency
                     return $ case c of
@@ -351,7 +351,7 @@ unsignedAmount = do
                                 Just x -> Right $ CurrenciedAmount n x
 
 accountPart :: Parser (Either String RawAccountPart)
-accountPart = do
+accountPart = label "account part" $ do
                 ac <- accountName
                 keyword <- optional . try $ do
                                               _ <- some spaceChar
@@ -367,10 +367,10 @@ accountPart = do
                                         Right $ RawAccountPart ac keyword (Just am') Nothing Nothing
 
 arrow :: Parser String
-arrow = string "->" <|> string "<-"
+arrow = label "arrow" $ string "->" <|> string "<-"
 
 transaction :: Parser (Either String Transaction)
-transaction = do
+transaction = label "transaction" $ do
                 d <- date
                 _ <- some spaceChar
                 nar <- narration
