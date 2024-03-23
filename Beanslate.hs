@@ -3,6 +3,7 @@ import qualified Text.Megaparsec as P
 import Text.Megaparsec.Internal (ParsecT(..))
 import Text.Megaparsec.Char
 import qualified Data.Set as Set
+import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void (Void)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust, mapMaybe)
@@ -301,8 +302,14 @@ toBeancount (Transaction d nar tals) = showDate d ++ " * \"" ++ nar ++ "\"\n" ++
                                         where
                                             longestAccountLength = maximum (map (length . talAccountName) tals)
 
+sc :: Parser ()
+sc = L.space space1 empty empty
+
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
+
 date :: Parser Date
-date = label "date" $ do
+date = label "date" $ lexeme $ do
          y <- count 4 digitChar
          _ <- char '-'
          m <- count 2 digitChar
@@ -311,19 +318,19 @@ date = label "date" $ do
          return $ Date (read y) (read m) (read d)
 
 narration :: Parser String
-narration = label "narration" $ char '"' *>  many (satisfy (/= '"')) <* char '"'
+narration = label "narration" $ lexeme $ char '"' *>  many (satisfy (/= '"')) <* char '"'
 
 flagOrDirective :: Parser String
-flagOrDirective = label "flag/directive" $ string "*" <|> string "!" <|> string "txn"
+flagOrDirective = label "flag/directive" $ lexeme $ string "*" <|> string "!" <|> string "txn"
 
 accountName :: Parser String
-accountName = label "account name" $ do
+accountName = label "account name" $ lexeme $ do
                 accountType <- string "Assets" <|> string "Liabilities" <|> string "Income" <|> string "Expenses" <|> string "Equity"
-                rest <- many (letterChar <|> char ':')
+                rest <- many (letterChar <|> char ':' <|> char '-')
                 return $ accountType ++ rest
 
 unsignedValue :: Parser String
-unsignedValue = label "unsigned value" $ do
+unsignedValue = label "unsigned value" $ lexeme $ do
                     integerPart <- some digitChar
                     decimalPart <- optional . try $ do
                                             dot <- char '.'
@@ -339,13 +346,13 @@ unsignedValue = label "unsigned value" $ do
 -- eventually the code below should be changed to support exactly the currency
 -- strings that Beancount supports.)
 currency :: Parser String
-currency = label "currency" $ some upperChar
+currency = label "currency" $ lexeme $ some upperChar
 
 -- Parse an unsigned monetary amount like "12.50 USD".
 unsignedAmount :: Parser (Either String CurrenciedAmount)
 unsignedAmount = label "unsigned amount" $ do
                     n <- unsignedValue
-                    c <- optional . try $ some (char ' ') *> currency
+                    c <- optional . try $ currency
                     return $ case c of
                                 Nothing -> Left $ "Amount of " ++ n ++" was found, but no currency (e.g. USD) was found!"
                                 Just x -> Right $ CurrenciedAmount n x
@@ -353,13 +360,12 @@ unsignedAmount = label "unsigned amount" $ do
 accountPart :: Parser (Either String RawAccountPart)
 accountPart = label "account part" $ do
                 ac <- accountName
-                keyword <- optional . try $ do
-                                              _ <- some spaceChar
+                keyword <- optional . try $ lexeme $ do
                                               _ <- char '('
                                               kw <- some (satisfy (/= ')'))
                                               _ <- char ')'
                                               return kw
-                am <- optional . try $ some spaceChar *> unsignedAmount
+                am <- optional . try $ unsignedAmount
                 return $ case am of
                             Nothing -> Right $ RawAccountPart ac keyword Nothing Nothing Nothing
                             Just v -> do
@@ -367,24 +373,22 @@ accountPart = label "account part" $ do
                                         Right $ RawAccountPart ac keyword (Just am') Nothing Nothing
 
 arrow :: Parser String
-arrow = label "arrow" $ string "->" <|> string "<-"
+arrow = label "arrow" $ lexeme $ string "->" <|> string "<-"
 
 transaction :: Parser (Either String Transaction)
 transaction = label "transaction" $ do
                 d <- date
-                _ <- some spaceChar
                 nar <- narration
                 -- Without the try, the line below will start trying to match
                 -- another accountPart as soon as it sees the next space. Then
                 -- if it doesn't immediately match another accountPart, it will
                 -- produce a parse error.
-                acclines1 <- some (try $ some spaceChar *> accountPart)
+                acclines1 <- some (try accountPart)
                 arrowAndBeyond <- optional . try $ do
-                                        _ <- some spaceChar
                                         ar <- arrow
-                                        acclines2 <- some (try $ some spaceChar *> accountPart)
+                                        acclines2 <- some (try accountPart)
                                         return (ar, acclines2)
-                _ <- void (some spaceChar) <|> eof
+                -- _ <- void (some spaceChar) <|> eof
                 let rawTransaction = case arrowAndBeyond of
                                         Nothing -> (d, nar, acclines1, "(no arrow)", [])
                                         Just (ar, acclines2) -> (d, nar, acclines1, ar, acclines2)
