@@ -1,5 +1,8 @@
-import Text.Megaparsec
+import Text.Megaparsec hiding (label, (<?>))
+import qualified Text.Megaparsec as P
+import Text.Megaparsec.Internal (ParsecT(..))
 import Text.Megaparsec.Char
+import qualified Data.Set as Set
 import Data.Void (Void)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust, mapMaybe)
@@ -8,7 +11,33 @@ import Control.Monad (void)
 import Text.Printf (printf)
 import Data.Either (fromRight)
 
-type Parser = Parsec Void String
+-- The following several lines are from this Stack Overflow answer by K. A.
+-- Buhr (https://stackoverflow.com/a/78209173/3422337).  It changes the
+-- behavior of Megaparsec's label function (infix version: <?>) so that a full
+-- traceback of parsers is shown when a parsing error happens.
+data ErrorWithLabel = ErrorWithLabel String (ParseError String ErrorWithLabel)
+  deriving (Eq, Ord)
+
+-- orphan instance needed for technical reasons
+deriving instance Ord (ParseError String ErrorWithLabel)
+
+instance ShowErrorComponent ErrorWithLabel where
+  showErrorComponent (ErrorWithLabel l e) =
+    "while parsing " <> l <> ",\n" <> parseErrorTextPretty e
+
+type Parser = Parsec ErrorWithLabel String
+
+label :: String -> Parser p -> Parser p
+label l p = ParsecT $ \s cok cerr eeok eerr ->
+  let addLabel e = FancyError (errorOffset e) .
+        Set.singleton . ErrorCustom $ ErrorWithLabel l e
+  in unParser (P.label l p) s cok (cerr . addLabel) eeok eerr
+
+infix 0 <?>
+(<?>) :: Parser p -> String -> Parser p
+(<?>) = flip label
+
+-- End of code from K. A. Buhr's answer.
 
 data Date = Date
     { year :: Int
@@ -72,7 +101,7 @@ parseWithLeftOver p = parse ((,) <$> p <*> leftOver) "(source unknown)"
                         where
                          leftOver = manyTill anySingle eof
 
-putError :: ParseErrorBundle String Void -> IO ()
+putError :: ParseErrorBundle String ErrorWithLabel -> IO ()
 putError e = putStr $ errorBundlePretty e
 
 parseOrPrintError :: (Show a, Show b) => Parser a -> (a -> b) -> String -> IO ()
@@ -273,7 +302,7 @@ toBeancount (Transaction d nar tals) = showDate d ++ " * \"" ++ nar ++ "\"\n" ++
                                             longestAccountLength = maximum (map (length . talAccountName) tals)
 
 date :: Parser Date
-date = do
+date = label "date" $ do
          y <- count 4 digitChar
          _ <- char '-'
          m <- count 2 digitChar
