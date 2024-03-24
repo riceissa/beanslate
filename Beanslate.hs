@@ -330,7 +330,7 @@ accountName = label "account name" $ lexeme $ do
                 return $ accountType ++ rest
 
 unsignedValue :: Parser String
-unsignedValue = label "unsigned value" $ lexeme $ do
+unsignedValue = label "unsigned value" $ do
                     integerPart <- some digitChar
                     decimalPart <- optional . try $ do
                                             dot <- char '.'
@@ -346,13 +346,16 @@ unsignedValue = label "unsigned value" $ lexeme $ do
 -- eventually the code below should be changed to support exactly the currency
 -- strings that Beancount supports.)
 currency :: Parser String
-currency = label "currency" $ lexeme $ some upperChar
+currency = label "currency" $ some upperChar
 
 -- Parse an unsigned monetary amount like "12.50 USD".
 unsignedAmount :: Parser (Either String CurrenciedAmount)
-unsignedAmount = label "unsigned amount" $ do
+unsignedAmount = label "unsigned amount" $ lexeme $ do
                     n <- unsignedValue
-                    c <- optional . try $ currency
+                    -- The currency part is not actually optional, but we parse
+                    -- it as if it's optional so that we can display a better
+                    -- error message if it's missing.
+                    c <- optional . try $ (some $ char ' ') *> currency
                     return $ case c of
                                 Nothing -> Left $ "Amount of " ++ n ++" was found, but no currency (e.g. USD) was found!"
                                 Just x -> Right $ CurrenciedAmount n x
