@@ -254,6 +254,10 @@ sapToTal :: SignedAccountPart -> Either String TransactionAccountLine
 sapToTal (SignedAccountPart name (Just ca) sign) = Right $ TransactionAccountLine name (caAmount ca) sign
 sapToTal (SignedAccountPart name Nothing _) = Left ("In account part " ++ name ++ " no currencied amount has been given!")
 
+-- Given a floating point number or integer written as a string, find its precision.
+findPrecision :: String -> Int
+findPrecision x = max 0 $ length (dropWhile (/= '.') x) - 1
+
 -- Make sure at most one currencied amount is missing, and if it is missing,
 -- fill it in by calculating what it must be using the other amounts.
 -- * Having all amounts and signs and adding up to zero -> ok
@@ -268,6 +272,9 @@ validateSignedAccountParts saps =
     let justs = filter hasAmount saps
         nothings = filter (not . hasAmount) saps
         sumOfJusts = sum $ mapMaybe signedAmount saps :: Float
+        amounts = map caAmount $ mapMaybe sapCurrenciedAmount saps
+        mostPrecise = if null amounts then 0 else maximum $ map findPrecision amounts
+        printfFmt = "%." ++ show mostPrecise ++ "f"
     in case length nothings of
         0 -> if abs sumOfJusts < 0.0001
                 then traverse sapToTal justs
@@ -280,7 +287,7 @@ validateSignedAccountParts saps =
                                 then sapToTal (SignedAccountPart
                                                 (sapAccountName missingSap)
                                                 (Just $ CurrenciedAmount
-                                                    (show missingValue) "USD")
+                                                    (printf printfFmt missingValue) "USD")
                                                 (sapSign missingSap))
                                 else Left ("An explicit sign (" ++ [sapSign missingSap] ++ ") was given for "
                                            ++ sapAccountName missingSap ++
@@ -355,7 +362,7 @@ unsignedAmount = label "unsigned amount" $ lexeme $ do
                     -- The currency part is not actually optional, but we parse
                     -- it as if it's optional so that we can display a better
                     -- error message if it's missing.
-                    c <- optional . try $ (some $ char ' ') *> currency
+                    c <- optional . try $ some (char ' ') *> currency
                     return $ case c of
                                 Nothing -> Left $ "Amount of " ++ n ++" was found, but no currency (e.g. USD) was found!"
                                 Just x -> Right $ CurrenciedAmount n x
